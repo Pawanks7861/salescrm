@@ -1,0 +1,54 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+/auth.json
+*.pem
+*.key
+
+# Dependencies & build output
+/node_modules
+/vendor
+/public/build
+/public/hot
+/public/storage
+
+# Runtime storage (logs, sessions, cache, uploads, recordings, exports).
+# Laravel's storage/**/.gitignore files keep the directory skeleton only.
+/storage/*.key
+/storage/pail
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/app/branding
+/storage/app/private/*
+!/storage/app/private/.gitignore
+
+# Local databases & dumps
+*.sqlite
+*.sqlite-journal
+*.sql
+*.sql.gz
+*.dump
+
+# Test & tool caches
+/.phpunit.cache
+.phpunit.result.cache
+/coverage
+.phpactor.json
+
+# Package manager logs
+npm-debug.log
+yarn-error.log
+
+# Local VMs / IDEs / OS
+Homestead.json
+Homestead.yaml
+/.cursor
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+.DS_Store
+Thumbs.db
+desktop.ini

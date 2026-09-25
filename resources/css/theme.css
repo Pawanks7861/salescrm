@@ -1,0 +1,92 @@
+/*
+ * Sales CRM design tokens (dark theme).
+ * Every colour used by the UI resolves to one of these variables — Tailwind's
+ * palette is mapped onto them in tailwind.config.js, so components should use
+ * Tailwind classes or these variables, never raw hex values.
+ * Channel variants (--rgb-*) exist so Tailwind opacity modifiers keep working.
+ */
+:root {
+    color-scheme: dark;
+
+    /* Surfaces */
+    --app-bg: #0b0f1a;
+    --content-bg: #0d1220;
+    --sidebar-bg: #101625;
+    --surface-1: #151b2b;
+    --surface-2: #181f31;
+    --surface-3: #1e2639;
+    --surface-4: #242d42;
+    --input-bg: #131a29;
+    --overlay: rgb(5 8 15 / 0.72);
+
+    /* Borders */
+    --border: #273149;
+    --border-strong: #34405c;
+    --border-light: rgba(148, 163, 184, 0.14);
+
+    /* Text */
+    --text-primary: #f5f7ff;
+    --text-strong: #e3e7f3;
+    --text-body: #c9d0e0;
+    --text-secondary: #a5aec4;
+    --text-subtle: #8a94ac;
+    --text-muted: #747f99;
+    --text-faint: #5b6680;
+
+    /* Brand + semantic */
+    --primary: #6366f1;
+    --primary-light: #7c74ff;
+    --primary-strong: #5457e6;
+    --primary-text: #a09bff;
+    --success: #4ed7a8;
+    --warning: #f4b646;
+    --danger: #f35c78;
+    --info: #55b8ff;
+    --cyan: #45c6e8;
+    --purple: #a66cff;
+
+    /* Channels (r g b) for alpha-aware Tailwind colours */
+    --rgb-app-bg: 11 15 26;
+    --rgb-content-bg: 13 18 32;
+    --rgb-sidebar-bg: 16 22 37;
+    --rgb-surface-1: 21 27 43;
+    --rgb-surface-2: 24 31 49;
+    --rgb-surface-3: 30 38 57;
+    --rgb-surface-4: 36 45 66;
+    --rgb-border: 39 49 73;
+    --rgb-border-strong: 52 64 92;
+    --rgb-text-primary: 245 247 255;
+    --rgb-text-strong: 227 231 243;
+    --rgb-text-body: 201 208 224;
+    --rgb-text-secondary: 165 174 196;
+    --rgb-text-subtle: 138 148 172;
+    --rgb-text-muted: 116 127 153;
+    --rgb-text-faint: 91 102 128;
+    --rgb-primary: 99 102 241;
+    --rgb-primary-light: 124 116 255;
+    --rgb-success: 78 215 168;
+    --rgb-warning: 244 182 70;
+    --rgb-danger: 243 92 120;
+    --rgb-info: 85 184 255;
+    --rgb-cyan: 69 198 232;
+    --rgb-purple: 166 108 255;
+    --rgb-orange: 251 146 90;
+    --rgb-teal: 56 212 190;
+    --rgb-pink: 244 114 182;
+    --rgb-lime: 163 227 107;
+    --rgb-fuchsia: 226 121 249;
+
+    /* Shape + depth */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 18px;
+    --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.02) inset, 0 10px 30px -18px rgb(0 0 0 / 0.65);
+    --shadow-pop: 0 24px 60px -16px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(var(--rgb-border));
+    --shadow-glow: 0 8px 24px -10px rgb(var(--rgb-primary) / 0.55);
+
+    /* Layout */
+    --sidebar-width: 264px;
+    --header-height: 64px;
+    --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
