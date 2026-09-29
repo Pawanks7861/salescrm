@@ -136,7 +136,7 @@ class LeadService
 
         [$lead, $enquiry] = DB::transaction(function () use ($data, $channel, $enquiryData, $options) {
             [$lead, $enquiry] = $this->persistNew($data, null, $channel, $enquiryData, $options);
-            $this->engine->apply($lead);
+            $this->assignInbound($lead, $channel);
 
             return [$lead, $enquiry];
         });
@@ -144,6 +144,25 @@ class LeadService
         LeadCreated::dispatch($lead);
 
         return ['lead' => $lead, 'merged' => false, 'enquiry' => $enquiry, 'filled' => []];
+    }
+
+    /**
+     * Facebook leads with a chosen assignee in settings skip assignment rules.
+     * Every other inbound lead still uses the rule engine.
+     */
+    private function assignInbound(Lead $lead, AssignmentType $channel): void
+    {
+        if ($channel === AssignmentType::Facebook) {
+            $userId = (int) $this->settings->get('facebook.auto_assign_user_id', 0);
+            $user = $userId > 0 ? User::query()->active()->find($userId) : null;
+            if ($user) {
+                $this->assignments->assign($lead, $user, AssignmentType::Facebook);
+
+                return;
+            }
+        }
+
+        $this->engine->apply($lead);
     }
 
     /**

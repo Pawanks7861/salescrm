@@ -41,7 +41,7 @@ const dotColor = computed(
 );
 
 const callTitle = computed(() => state.call?.lead?.full_name ?? identity.value?.leads?.[0]?.name ?? state.call?.number ?? state.incoming?.number ?? 'Call');
-const callSubtitle = computed(() => state.call?.lead?.lead_number ?? state.call?.number ?? '');
+const callSubtitle = computed(() => (state.call?.lead ? `ID ${state.call.lead.id} · ${state.call.lead.lead_number}` : (state.call?.number ?? '')));
 
 const outcomeSaved = () => phone.outcomeSaved();
 const openLead = (url) => router.visit(url);
@@ -60,7 +60,7 @@ const openLead = (url) => router.visit(url);
                 <template v-else-if="identity?.state === 'matched'">
                     <p class="font-semibold text-slate-800">{{ identity.leads[0].name }}</p>
                     <p class="text-2xs text-slate-500">
-                        {{ identity.leads[0].lead_number }}
+                        ID {{ identity.leads[0].id }} · {{ identity.leads[0].lead_number }}
                         <UiBadge v-if="identity.leads[0].status" :color="identity.leads[0].status.color" class="ml-1">{{ identity.leads[0].status.name }}</UiBadge>
                     </p>
                     <p v-if="identity.leads[0].assignee" class="text-2xs text-slate-500">Owner: {{ identity.leads[0].assignee }}</p>
@@ -71,7 +71,7 @@ const openLead = (url) => router.visit(url);
                     <ul class="max-h-32 space-y-1 overflow-y-auto">
                         <li v-for="l in identity.leads" :key="l.id">
                             <button type="button" class="w-full rounded px-2 py-1 text-left text-xs hover:bg-slate-50" @click="openLead(l.url)">
-                                <span class="font-medium text-slate-800">{{ l.name }}</span> <span class="text-slate-400">{{ l.lead_number }}</span>
+                                <span class="font-medium text-slate-800">{{ l.name }}</span> <span class="text-slate-400">ID {{ l.id }} · {{ l.lead_number }}</span>
                             </button>
                         </li>
                     </ul>

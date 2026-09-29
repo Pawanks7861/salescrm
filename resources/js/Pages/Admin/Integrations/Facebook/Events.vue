@@ -111,7 +111,7 @@ const reasonLabel = (reason) => (reason ? reason.replaceAll('_', ' ') : '');
                             </td>
                             <td class="text-xs">{{ e.attempts }}<span v-if="e.deliveries > 1" class="text-slate-400"> · {{ e.deliveries }} deliveries</span></td>
                             <td class="text-xs">
-                                <Link v-if="e.lead" :href="e.lead.url" class="text-brand-600 hover:underline">{{ e.lead.lead_number }}</Link>
+                                <Link v-if="e.lead" :href="e.lead.url" class="text-brand-600 hover:underline">ID {{ e.lead.id }} · {{ e.lead.lead_number }}</Link>
                                 <span v-else class="text-slate-400">—</span>
                             </td>
                             <td class="text-right">
@@ -155,7 +155,7 @@ const reasonLabel = (reason) => (reason ? reason.replaceAll('_', ' ') : '');
                         </dd>
                     </template>
                     <dt class="text-slate-500">Lead</dt>
-                    <dd><Link v-if="detail.lead" :href="detail.lead.url" class="text-brand-600 hover:underline">{{ detail.lead.lead_number }}</Link><span v-else>—</span></dd>
+                    <dd><Link v-if="detail.lead" :href="detail.lead.url" class="text-brand-600 hover:underline">ID {{ detail.lead.id }} · {{ detail.lead.lead_number }}</Link><span v-else>—</span></dd>
                 </dl>
                 <div class="modal-footer">
                     <UiButton variant="secondary" @click="detail = null">Close</UiButton>

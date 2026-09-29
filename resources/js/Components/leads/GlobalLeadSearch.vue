@@ -89,7 +89,7 @@ const close = () => setTimeout(() => (open.value = false), 150);
             >
                 <span class="min-w-0">
                     <span class="block truncate text-sm font-medium text-slate-900">{{ lead.full_name }}</span>
-                    <span class="block truncate text-2xs text-slate-500">{{ lead.lead_number }} · {{ lead.phone ?? '—' }}<template v-if="lead.company_name"> · {{ lead.company_name }}</template></span>
+                    <span class="block truncate text-2xs text-slate-500">ID {{ lead.id }} · {{ lead.lead_number }} · {{ lead.phone ?? '—' }}<template v-if="lead.company_name"> · {{ lead.company_name }}</template></span>
                 </span>
                 <UiBadge v-if="lead.status" :color="lead.status.color">{{ lead.status.name }}</UiBadge>
             </button>

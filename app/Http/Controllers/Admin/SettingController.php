@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SettingsRequest;
 use App\Services\BrandingService;
+use App\Services\Security\OfficeNetworkGuard;
 use App\Services\SettingService;
 use App\Support\Permissions;
 use App\Support\SettingDefinitions;
@@ -47,6 +48,11 @@ class SettingController extends Controller
             ] : null,
             'can' => ['manage' => $request->user()->hasPermission(Permissions::SETTINGS_MANAGE)],
             'version' => config('crm.version'),
+            'network' => $group === 'security' ? [
+                'client_ip' => $request->ip(),
+                'restricted' => app(OfficeNetworkGuard::class)->enforced(),
+                'allowed_here' => app(OfficeNetworkGuard::class)->allows($request->ip()),
+            ] : null,
         ]);
     }
 

@@ -117,6 +117,7 @@ const restore = () => router.post(route('leads.restore', props.lead.id));
 const filledCustomFields = computed(() => props.customFields.filter((f) => f.display !== null && f.display !== ''));
 
 const details = computed(() => [
+    ['Real ID', props.lead.id],
     ['Phone', props.lead.phone],
     ['Alternate phone', props.lead.alternate_phone],
     ['Email', props.lead.email],
@@ -135,11 +136,11 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
 </script>
 
 <template>
-    <AppLayout :title="`${lead.lead_number} · ${lead.full_name}`">
+    <AppLayout :title="`ID ${lead.id} · ${lead.full_name}`">
         <PageHeader :title="lead.full_name">
             <template #leading><Avatar :name="lead.full_name" size="lg" class="hidden sm:inline-flex" /></template>
             <template #breadcrumb>
-                <Link :href="route('leads.index')" class="hover:text-slate-700">Leads</Link> / <span class="font-mono">{{ lead.lead_number }}</span>
+                <Link :href="route('leads.index')" class="hover:text-slate-700">Leads</Link> / <span class="font-mono" :title="`Real ID ${lead.id}`">{{ lead.id }}</span> <span class="text-slate-400">·</span> <span class="font-mono">{{ lead.lead_number }}</span>
             </template>
             <template #actions>
                 <CallButton v-if="calling" :lead-id="lead.id" :calling="calling" />
@@ -156,7 +157,7 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
         </div>
         <div v-if="lead.is_duplicate" class="mb-3 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             <AppIcon name="duplicate" class="h-4 w-4" />
-            <span>Flagged as a possible duplicate<template v-if="lead.duplicate_of"> of <Link :href="route('leads.show', lead.duplicate_of.id)" class="link">{{ lead.duplicate_of.lead_number }} · {{ lead.duplicate_of.full_name }}</Link></template><template v-else> of an existing lead</template>.</span>
+            <span>Flagged as a possible duplicate<template v-if="lead.duplicate_of"> of <Link :href="route('leads.show', lead.duplicate_of.id)" class="link">{{ lead.duplicate_of.id }} · {{ lead.duplicate_of.lead_number }} · {{ lead.duplicate_of.full_name }}</Link></template><template v-else> of an existing lead</template>.</span>
         </div>
 
         <!-- Header strip -->

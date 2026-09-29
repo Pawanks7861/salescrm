@@ -139,7 +139,7 @@ const creating = ref(canCreate.value && new URLSearchParams(window.location.sear
                             <td>
                                 <template v-if="m.lead">
                                     <Link :href="route('leads.show', m.lead.id)" class="text-sm font-medium text-slate-900 hover:text-brand-700">{{ m.lead.full_name }}</Link>
-                                    <p class="text-2xs text-slate-500">{{ m.lead.lead_number }}</p>
+                                    <p class="text-2xs text-slate-500">ID {{ m.lead.id }} · {{ m.lead.lead_number }}</p>
                                 </template>
                                 <span v-else class="text-2xs text-slate-400">Internal</span>
                             </td>

@@ -39,7 +39,7 @@ const submit = () => {
         <form @submit.prevent="submit">
             <div class="modal-header">
                 <h3 class="text-sm font-semibold">{{ lead.assignee ? 'Reassign lead' : 'Assign lead' }}</h3>
-                <p class="text-2xs text-slate-500">{{ lead.lead_number }} · currently {{ lead.assignee?.name ?? 'unassigned' }}</p>
+                <p class="text-2xs text-slate-500">ID {{ lead.id }} · {{ lead.lead_number }} · currently {{ lead.assignee?.name ?? 'unassigned' }}</p>
             </div>
             <div class="space-y-3 p-5">
                 <FormField label="Assign to" required :error="form.errors.assigned_to" hint="The new owner gets access immediately; the previous owner loses it.">

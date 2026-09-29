@@ -69,6 +69,8 @@ class ActivityService
 
     public const MEETING_NO_SHOW = 'meeting_no_show';
 
+    public const MEETING_NOTE = 'meeting_note';
+
     public const CALL_STARTED = 'call_started';
 
     public const CALL_COMPLETED = 'call_completed';

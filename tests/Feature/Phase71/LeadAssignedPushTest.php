@@ -39,7 +39,7 @@ test('a lead assigned to Rahul creates one notification and exactly one push job
 
     $notification = assignedNotifications($this->rahul)->sole();
     expect($notification->data)->toMatchArray(['event' => 'lead_assigned', 'lead_id' => $lead->id])
-        ->and($notification->data['message'])->toBe("New lead assigned to you: Amit Desai ({$lead->lead_number})");
+        ->and($notification->data['message'])->toBe("New lead assigned to you: Amit Desai (ID {$lead->id} · {$lead->lead_number})");
 
     Queue::assertPushed(SendWebPushNotification::class, 1);
     Queue::assertPushed(SendWebPushNotification::class, function (SendWebPushNotification $job) use ($notification) {

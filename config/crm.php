@@ -16,6 +16,12 @@ return [
     ],
 
     /*
+    | Emergency switch if the Medawk WiFi allow-list locks everyone out.
+    | Set OFFICE_WIFI_BYPASS=true, then php artisan config:cache.
+    */
+    'office_wifi_bypass' => (bool) env('OFFICE_WIFI_BYPASS', false),
+
+    /*
     | Platform attribution ("Powered by Buildify360"). Fixed by the platform
     | provider: intentionally not an env value or a CRM setting, so client
     | admins cannot change or remove it. Client branding (company name, logo,

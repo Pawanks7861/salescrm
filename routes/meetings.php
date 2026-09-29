@@ -4,6 +4,7 @@ use App\Http\Controllers\Meetings\MeetingCalendarController;
 use App\Http\Controllers\Meetings\MeetingCancellationController;
 use App\Http\Controllers\Meetings\MeetingCompletionController;
 use App\Http\Controllers\Meetings\MeetingController;
+use App\Http\Controllers\Meetings\MeetingNoteController;
 use App\Http\Controllers\Meetings\MeetingParticipantController;
 use App\Http\Controllers\Meetings\MeetingRescheduleController;
 use App\Http\Controllers\Meetings\MeetingStatusController;
@@ -36,6 +37,7 @@ Route::middleware($anyMeetingView)->group(function () {
     Route::post('meetings/{meeting}/participants', [MeetingParticipantController::class, 'store'])->middleware('permission:meeting.edit')->name('meetings.participants.store');
     Route::delete('meetings/{meeting}/participants/{participant}', [MeetingParticipantController::class, 'destroy'])->middleware('permission:meeting.edit')->name('meetings.participants.destroy');
     Route::post('meetings/{meeting}/respond', [MeetingParticipantController::class, 'respond'])->name('meetings.respond');
+    Route::post('meetings/{meeting}/notes', [MeetingNoteController::class, 'store'])->name('meetings.notes.store');
 
     Route::get('calendar', [MeetingCalendarController::class, 'index'])->name('calendar.index');
     Route::get('calendar/events', [MeetingCalendarController::class, 'events'])->name('calendar.events');

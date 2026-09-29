@@ -127,7 +127,7 @@ const submit = (confirmDuplicate = false, overrideConflict = false) => {
             <div class="modal-header">
                 <h3 class="text-sm font-semibold">Call outcome · {{ call.call_number }}</h3>
                 <p class="text-2xs text-slate-500">
-                    <template v-if="call.lead">{{ call.lead.full_name }} · </template>{{ call.direction_label }} · {{ formatDateTime(call.started_at) }}
+                    <template v-if="call.lead">{{ call.lead.full_name }} · ID {{ call.lead.id }} · </template>{{ call.direction_label }} · {{ formatDateTime(call.started_at) }}
                 </p>
             </div>
 

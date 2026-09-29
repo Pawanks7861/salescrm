@@ -105,6 +105,12 @@ class MeetingPolicy
         return $meeting->trashed() && $user->hasPermission(P::MEETING_DELETE) && $this->visibility->canView($user, $meeting);
     }
 
+    /** Admin notes are allowed on any visible meeting, including completed ones. */
+    public function addNote(User $user, Meeting $meeting): bool
+    {
+        return ! $meeting->trashed() && $user->isAdmin() && $this->visibility->canView($user, $meeting);
+    }
+
     private function upcoming(User $user, Meeting $meeting): bool
     {
         return ! $meeting->trashed() && $meeting->isUpcoming() && $this->visibility->canManage($user, $meeting);

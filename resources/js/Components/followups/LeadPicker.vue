@@ -50,7 +50,7 @@ const pick = (lead) => {
     <div v-if="modelValue" class="flex items-center justify-between rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-sm">
         <span class="min-w-0 truncate">
             <span class="font-medium text-slate-900">{{ modelValue.full_name }}</span>
-            <span class="ml-1 text-2xs text-slate-500">{{ modelValue.lead_number }}</span>
+            <span class="ml-1 text-2xs text-slate-500">ID {{ modelValue.id }} · {{ modelValue.lead_number }}</span>
         </span>
         <button type="button" class="text-slate-400 hover:text-slate-600" title="Change lead" @click="emit('update:modelValue', null)">
             <AppIcon name="close" class="h-4 w-4" />
@@ -63,7 +63,7 @@ const pick = (lead) => {
             <p v-else-if="!results.length" class="px-3 py-2 text-xs text-slate-500">No matching leads.</p>
             <button v-for="lead in results" :key="lead.id" type="button" class="block w-full px-3 py-2 text-left hover:bg-slate-50" @mousedown.prevent="pick(lead)">
                 <span class="block truncate text-sm font-medium text-slate-900">{{ lead.full_name }}</span>
-                <span class="block truncate text-2xs text-slate-500">{{ lead.lead_number }} · {{ lead.phone ?? '—' }}</span>
+                <span class="block truncate text-2xs text-slate-500">ID {{ lead.id }} · {{ lead.lead_number }} · {{ lead.phone ?? '—' }}</span>
             </button>
         </div>
     </div>

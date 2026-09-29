@@ -11,7 +11,7 @@ import UiButton from '@/Components/ui/UiButton.vue';
 import UiPagination from '@/Components/ui/UiPagination.vue';
 import { useFilters } from '@/Composables/useFilters';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatCurrency, formatDateTime, timeAgo } from '@/utils/format';
+import { formatCurrency, formatDate, formatDateTime, timeAgo } from '@/utils/format';
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -24,7 +24,7 @@ const props = defineProps({
 
 const showValue = computed(() => props.leads.data.some((l) => 'estimated_value' in l));
 
-const keys = ['search', 'status', 'source', 'campaign', 'facebook_page', 'facebook_form', 'assignee', 'priority', 'city', 'state', 'created_from', 'created_to', 'age', 'duplicates', 'archived', 'sort', 'direction', 'per_page'];
+const keys = ['search', 'status', 'source', 'campaign', 'facebook_page', 'facebook_form', 'assignee', 'priority', 'city', 'state', 'on', 'created_from', 'created_to', 'age', 'duplicates', 'archived', 'sort', 'direction', 'per_page'];
 const { filters, reset } = useFilters(Object.fromEntries(keys.map((k) => [k, props.filters[k] ?? ''])), route('leads.index'));
 
 const advancedKeys = ['campaign', 'facebook_page', 'facebook_form', 'city', 'state', 'created_from', 'created_to', 'duplicates', 'archived'];
@@ -42,6 +42,27 @@ const sortBy = (column) => {
 const sortIcon = (column) => (filters.sort === column || (!filters.sort && column === 'created_at') ? ((filters.direction || 'desc') === 'asc' ? '↑' : '↓') : '');
 
 const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-slate-600' : days <= 7 ? 'text-amber-600' : 'text-red-600');
+const pickDay = (day) => {
+    filters.on = filters.on === day ? '' : day;
+};
+const colSpan = computed(() => (showValue.value ? 10 : 9));
+const groupedRows = computed(() => {
+    const rows = props.leads.data;
+    const byDate = !filters.sort || filters.sort === 'created_at';
+    if (!byDate) return rows.map((lead) => ({ type: 'lead', lead }));
+
+    const out = [];
+    let last = '';
+    for (const lead of rows) {
+        const label = formatDate(lead.created_at);
+        if (label !== last) {
+            out.push({ type: 'date', label });
+            last = label;
+        }
+        out.push({ type: 'lead', lead });
+    }
+    return out;
+});
 </script>
 
 <template>
@@ -56,7 +77,7 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
         <div class="panel">
             <FilterBar bare :active-count="activeCount" @clear="reset">
                 <div class="flex flex-wrap items-center gap-2">
-                    <SearchInput v-model="filters.search" placeholder="Lead no., phone, name, email, company…" class="w-full sm:w-72" />
+                    <SearchInput v-model="filters.search" placeholder="Real ID, lead no., phone, name, email…" class="w-full sm:w-72" />
                     <select v-model="filters.status" class="form-input w-36">
                         <option value="">All statuses</option>
                         <option v-for="s in options.statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -78,6 +99,9 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
                         <option value="">Any age</option>
                         <option v-for="b in options.ageBuckets" :key="b.value" :value="b.value">{{ b.label }}</option>
                     </select>
+                    <label class="flex items-center gap-1 text-xs text-slate-500">Date <input v-model="filters.on" type="date" class="form-input w-36" /></label>
+                    <button type="button" class="h-10 rounded-lg px-2.5 text-xs font-medium" :class="filters.on === options.today ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'" @click="pickDay(options.today)">Today</button>
+                    <button type="button" class="h-10 rounded-lg px-2.5 text-xs font-medium" :class="filters.on === options.yesterday ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'" @click="pickDay(options.yesterday)">Yesterday</button>
                     <button class="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900" :aria-expanded="showAdvanced" @click="showAdvanced = !showAdvanced">
                         <AppIcon name="filter" class="h-4 w-4" /> More filters
                     </button>
@@ -130,48 +154,58 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
                             <th>Owner</th>
                             <th>City</th>
                             <th v-if="showValue" class="text-right">Value</th>
-                            <th class="cursor-pointer select-none" @click="sortBy('created_at')">Age {{ sortIcon('created_at') }}</th>
+                            <th class="cursor-pointer select-none" @click="sortBy('created_at')">Date {{ sortIcon('created_at') }}</th>
                             <th class="cursor-pointer select-none" @click="sortBy('updated_at')">Updated {{ sortIcon('updated_at') }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="lead in leads.data" :key="lead.id" :class="{ 'opacity-60': lead.archived }">
+                        <template v-for="row in groupedRows" :key="row.type === 'date' ? `d-${row.label}` : row.lead.id">
+                        <tr v-if="row.type === 'date'" class="bg-slate-50">
+                            <td :colspan="colSpan" class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ row.label }}</td>
+                        </tr>
+                        <tr v-else :class="{ 'opacity-60': row.lead.archived }">
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <Avatar :name="lead.full_name" size="md" />
+                                    <Avatar :name="row.lead.full_name" size="md" />
                                     <div class="min-w-0">
-                                        <Link :href="route('leads.show', lead.id)" class="block max-w-[220px] truncate font-semibold text-slate-900 hover:text-brand-700">{{ lead.full_name }}</Link>
+                                        <Link :href="route('leads.show', row.lead.id)" class="block max-w-[220px] truncate font-semibold text-slate-900 hover:text-brand-700">{{ row.lead.full_name }}</Link>
                                         <p class="flex items-center gap-1.5 text-2xs text-slate-500">
-                                            <Link :href="route('leads.show', lead.id)" class="font-mono hover:text-brand-600">{{ lead.lead_number }}</Link>
-                                            <span v-if="lead.company_name" class="max-w-[140px] truncate">· {{ lead.company_name }}</span>
-                                            <UiBadge v-if="lead.is_duplicate" color="amber">Dup</UiBadge>
-                                            <UiBadge v-if="lead.archived" color="slate">Archived</UiBadge>
+                                            <Link :href="route('leads.show', row.lead.id)" class="font-mono font-semibold text-slate-700 hover:text-brand-600" :title="`Real ID ${row.lead.id}`">{{ row.lead.id }}</Link>
+                                            <span class="text-slate-300">·</span>
+                                            <Link :href="route('leads.show', row.lead.id)" class="font-mono hover:text-brand-600">{{ row.lead.lead_number }}</Link>
+                                            <span v-if="row.lead.company_name" class="max-w-[140px] truncate">· {{ row.lead.company_name }}</span>
+                                            <UiBadge v-if="row.lead.is_duplicate" color="amber">Dup</UiBadge>
+                                            <UiBadge v-if="row.lead.archived" color="slate">Archived</UiBadge>
                                         </p>
                                     </div>
                                 </div>
                             </td>
                             <td class="text-xs">
-                                <p class="whitespace-nowrap">{{ lead.phone ?? '—' }}</p>
-                                <p v-if="lead.email" class="max-w-[180px] truncate text-2xs text-slate-500">{{ lead.email }}</p>
+                                <p class="whitespace-nowrap">{{ row.lead.phone ?? '—' }}</p>
+                                <p v-if="row.lead.email" class="max-w-[180px] truncate text-2xs text-slate-500">{{ row.lead.email }}</p>
                             </td>
-                            <td><UiBadge v-if="lead.status" :color="lead.status.color" dot>{{ lead.status.name }}</UiBadge></td>
-                            <td><PriorityBadge :priority="lead.priority" /></td>
+                            <td><UiBadge v-if="row.lead.status" :color="row.lead.status.color" dot>{{ row.lead.status.name }}</UiBadge></td>
+                            <td><PriorityBadge :priority="row.lead.priority" /></td>
                             <td class="text-xs">
-                                {{ lead.source?.name ?? '—' }}
-                                <p v-if="lead.campaign" class="max-w-[140px] truncate text-2xs text-slate-500">{{ lead.campaign.name }}</p>
+                                {{ row.lead.source?.name ?? '—' }}
+                                <p v-if="row.lead.campaign" class="max-w-[140px] truncate text-2xs text-slate-500">{{ row.lead.campaign.name }}</p>
                             </td>
                             <td class="text-xs">
-                                <div v-if="lead.assignee" class="flex items-center gap-2">
-                                    <Avatar :name="lead.assignee.name" size="xs" />
-                                    <p class="min-w-0 truncate text-slate-800">{{ lead.assignee.name }}</p>
+                                <div v-if="row.lead.assignee" class="flex items-center gap-2">
+                                    <Avatar :name="row.lead.assignee.name" size="xs" />
+                                    <p class="min-w-0 truncate text-slate-800">{{ row.lead.assignee.name }}</p>
                                 </div>
                                 <UiBadge v-else color="amber">Unassigned</UiBadge>
                             </td>
-                            <td class="text-xs">{{ lead.city ?? '—' }}</td>
-                            <td v-if="showValue" class="whitespace-nowrap text-right text-xs">{{ formatCurrency(lead.estimated_value) }}</td>
-                            <td class="whitespace-nowrap text-xs font-medium" :class="ageClass(lead.age_days)" :title="formatDateTime(lead.created_at)">{{ lead.age_days }}d</td>
-                            <td class="whitespace-nowrap text-xs text-slate-500" :title="formatDateTime(lead.updated_at)">{{ timeAgo(lead.updated_at) }}</td>
+                            <td class="text-xs">{{ row.lead.city ?? '—' }}</td>
+                            <td v-if="showValue" class="whitespace-nowrap text-right text-xs">{{ formatCurrency(row.lead.estimated_value) }}</td>
+                            <td class="whitespace-nowrap text-xs" :title="formatDateTime(row.lead.created_at)">
+                                <p class="font-medium text-slate-800">{{ formatDate(row.lead.created_at) }}</p>
+                                <p class="font-medium" :class="ageClass(row.lead.age_days)">{{ row.lead.age_days }}d</p>
+                            </td>
+                            <td class="whitespace-nowrap text-xs text-slate-500" :title="formatDateTime(row.lead.updated_at)">{{ timeAgo(row.lead.updated_at) }}</td>
                         </tr>
+                        </template>
                     </tbody>
                 </table>
                 <EmptyState v-if="!leads.data.length" icon="users" :title="activeCount ? 'No leads match these filters' : 'No leads yet'" :description="can.create && !activeCount ? 'Create your first lead to get started.' : ''" />

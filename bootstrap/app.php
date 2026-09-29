@@ -2,6 +2,7 @@
 
 use App\Enums\AuditAction;
 use App\Http\Controllers\HealthController;
+use App\Http\Middleware\EnsureOfficeNetwork;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Stateless (no session/cookies) for uptime monitors.
             Route::get('health', HealthController::class)->middleware('throttle:health')->name('health');
 
-            Route::middleware(['web', 'auth', 'active'])
+            Route::middleware(['web', 'auth', 'active', 'office'])
                 ->prefix('admin')
                 ->name('admin.')
                 ->group(base_path('routes/admin.php'));
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => EnsurePermission::class,
             'active' => EnsureUserIsActive::class,
+            'office' => EnsureOfficeNetwork::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

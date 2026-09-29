@@ -120,6 +120,12 @@ class User extends Authenticatable
         return $this->role?->slug === self::SUPER_ADMIN_ROLE;
     }
 
+    /** Super Admin or the Admin role. Sales roles are not included. */
+    public function isAdmin(): bool
+    {
+        return $this->isSuperAdmin() || $this->role?->slug === 'admin';
+    }
+
     /** @return array<string> */
     public function permissionNames(): array
     {

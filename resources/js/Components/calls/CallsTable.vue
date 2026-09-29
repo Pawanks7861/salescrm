@@ -46,6 +46,7 @@ const directionIcon = (c) => (c.direction === 'inbound' ? (c.status === 'missed'
                         <td class="whitespace-nowrap text-xs text-slate-600">{{ formatDateTime(c.started_at) }}</td>
                         <td v-if="showLead" class="max-w-[12rem] truncate">
                             <Link v-if="c.lead" :href="route('leads.show', c.lead.id)" class="text-slate-800 hover:text-brand-700">{{ c.lead.full_name }}</Link>
+                            <p v-if="c.lead" class="text-2xs text-slate-500">ID {{ c.lead.id }} · {{ c.lead.lead_number }}</p>
                             <span v-else class="text-xs text-slate-500">{{ c.customer_number || 'Unknown caller' }}</span>
                         </td>
                         <td class="whitespace-nowrap text-xs text-slate-600">

@@ -8,6 +8,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 defineProps({
     canResetPassword: { type: Boolean },
     status: { type: String },
+    officeBlocked: { type: Boolean, default: false },
 });
 
 const form = useForm({
@@ -31,6 +32,7 @@ const submit = () => {
         <p class="mb-8 mt-1.5 text-sm text-slate-500">Use the credentials provided by your administrator.</p>
 
         <div v-if="status" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ status }}</div>
+        <div v-if="officeBlocked" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">The CRM can only be used on the Medawk office WiFi.</div>
 
         <form class="space-y-4" @submit.prevent="submit">
             <FormField label="Email" for="email" :error="form.errors.email">

@@ -219,7 +219,7 @@ const calendarOptions = computed(() => ({
                             <p class="truncate font-semibold">
                                 <span v-if="arg.timeText">{{ arg.timeText }} · </span>{{ arg.event.title }}
                             </p>
-                            <p v-if="arg.event.extendedProps.lead" class="truncate opacity-90">{{ arg.event.extendedProps.lead }}</p>
+                            <p v-if="arg.event.extendedProps.lead" class="truncate opacity-90">{{ arg.event.extendedProps.lead }}<template v-if="arg.event.extendedProps.lead_id"> · ID {{ arg.event.extendedProps.lead_id }}</template></p>
                             <p class="truncate opacity-75">
                                 {{ arg.event.extendedProps.type }}<template v-if="arg.event.extendedProps.host"> · {{ arg.event.extendedProps.host }}</template>
                                 <template v-if="!['scheduled', 'confirmed'].includes(arg.event.extendedProps.status)"> · {{ arg.event.extendedProps.status_label }}</template>

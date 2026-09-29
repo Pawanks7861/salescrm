@@ -14,7 +14,7 @@ Route::get('/branding/{type}', [BrandingController::class, 'show'])
     ->middleware('throttle:120,1')
     ->name('branding.asset');
 
-Route::middleware(['auth', 'active', 'throttle:crm'])->group(function () {
+Route::middleware(['auth', 'active', 'office', 'throttle:crm'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

@@ -34,8 +34,10 @@ use App\Services\Meetings\MeetingOptions;
 use App\Services\Meetings\MeetingParticipantService;
 use App\Services\Meetings\MeetingQueryService;
 use App\Services\Telephony\CallService;
+use App\Support\CrmTime;
 use App\Support\LeadValue;
 use App\Support\Permissions;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,6 +91,7 @@ class LeadController extends Controller
             'state' => ['nullable', 'string', 'max:100'],
             'created_from' => ['nullable', 'date'],
             'created_to' => ['nullable', 'date'],
+            'on' => ['nullable', 'date'],
             'age' => ['nullable', 'string', 'max:10'],
             'unassigned' => ['nullable', 'boolean'],
             'duplicates' => ['nullable', 'boolean'],
@@ -116,6 +119,8 @@ class LeadController extends Controller
                 'users' => $this->options->filterableUsers($user),
                 'priorities' => $this->options->priorities(),
                 'ageBuckets' => $this->options->ageBuckets(),
+                'today' => CarbonImmutable::now(CrmTime::tz())->toDateString(),
+                'yesterday' => CarbonImmutable::now(CrmTime::tz())->subDay()->toDateString(),
             ],
             'can' => [
                 'create' => $user->can('create', Lead::class),

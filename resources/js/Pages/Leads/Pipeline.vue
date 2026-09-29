@@ -152,7 +152,7 @@ const columnTotal = (column) => column.cards.reduce((sum, c) => sum + Number(c.e
                         </div>
                         <p v-if="card.company_name" class="mt-0.5 truncate text-2xs text-slate-500">{{ card.company_name }}</p>
                         <div class="mt-2 flex items-center justify-between text-2xs text-slate-500">
-                            <span class="font-mono">{{ card.lead_number }}</span>
+                            <span class="font-mono" :title="`Real ID ${card.id}`">{{ card.id }} · {{ card.lead_number }}</span>
                             <span>{{ card.age_days }}d</span>
                         </div>
                         <div class="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-2xs">

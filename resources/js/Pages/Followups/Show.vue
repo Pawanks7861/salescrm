@@ -106,7 +106,7 @@ const details = computed(() => [
                     <div class="panel-header"><h2 class="panel-title">Lead</h2></div>
                     <div class="p-4 text-sm">
                         <Link :href="route('leads.show', f.lead.id)" class="font-medium text-slate-900 hover:text-brand-700">{{ f.lead.full_name }}</Link>
-                        <p class="text-2xs text-slate-500">{{ f.lead.lead_number }}<template v-if="f.lead.company_name"> · {{ f.lead.company_name }}</template></p>
+                        <p class="text-2xs text-slate-500">ID {{ f.lead.id }} · {{ f.lead.lead_number }}<template v-if="f.lead.company_name"> · {{ f.lead.company_name }}</template></p>
                         <a v-if="f.lead.phone" :href="`tel:${f.lead.phone}`" class="mt-2 inline-flex items-center gap-1 text-sm text-brand-700"><AppIcon name="phone" class="h-4 w-4" />{{ f.lead.phone }}</a>
                     </div>
                 </div>

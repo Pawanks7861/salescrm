@@ -39,6 +39,7 @@ const edgeClass = (state) =>
                 <p class="truncate text-2xs text-slate-500">
                     <template v-if="showLead && f.lead">
                         <Link :href="route('leads.show', f.lead.id)" class="font-medium text-slate-700 hover:text-brand-700">{{ f.lead.full_name }}</Link>
+                        <span class="text-slate-400">· ID {{ f.lead.id }}</span>
                         <a v-if="f.lead.phone" :href="`tel:${f.lead.phone}`" class="ml-1 hover:text-brand-700">{{ f.lead.phone }}</a>
                     </template>
                     <template v-if="showAssignee && f.assignee"><span v-if="showLead && f.lead"> · </span>{{ f.assignee.name }}</template>

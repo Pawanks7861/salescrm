@@ -122,6 +122,7 @@ class MeetingPresenter
                 'status' => $meeting->status->value,
                 'status_label' => $meeting->status->label(),
                 'lead' => $meeting->lead?->full_name,
+                'lead_id' => $meeting->lead?->id,
                 'lead_number' => $meeting->lead?->lead_number,
                 'host' => $meeting->host?->name,
                 'location_type' => $meeting->location_type?->label(),

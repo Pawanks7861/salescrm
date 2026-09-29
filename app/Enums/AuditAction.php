@@ -72,6 +72,7 @@ enum AuditAction: string
     case MeetingAttendanceUpdated = 'MEETING_ATTENDANCE_UPDATED';
     case MeetingConflictOverridden = 'MEETING_CONFLICT_OVERRIDDEN';
     case MeetingReminderSent = 'MEETING_REMINDER_SENT';
+    case MeetingNoteAdded = 'MEETING_NOTE_ADDED';
     case MeetingAccessDenied = 'MEETING_ACCESS_DENIED';
 
     case UserCreated = 'USER_CREATED';

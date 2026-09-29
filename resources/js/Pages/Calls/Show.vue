@@ -121,7 +121,7 @@ const facts = computed(() => [
                     <h3 class="mb-2 text-sm font-semibold text-slate-800">Lead</h3>
                     <template v-if="call.lead">
                         <Link :href="route('leads.show', call.lead.id)" class="font-medium text-brand-700 hover:underline">{{ call.lead.full_name }}</Link>
-                        <p class="text-2xs text-slate-500">{{ call.lead.lead_number }}</p>
+                        <p class="text-2xs text-slate-500">ID {{ call.lead.id }} · {{ call.lead.lead_number }}</p>
                     </template>
                     <p v-else class="text-sm text-slate-500">{{ call.customer_number || 'Unknown caller' }} — not linked to a lead.</p>
                 </div>

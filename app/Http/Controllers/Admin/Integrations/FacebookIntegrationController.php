@@ -9,6 +9,7 @@ use App\Models\FacebookPage;
 use App\Models\FacebookWebhookEvent;
 use App\Models\Lead;
 use App\Models\LeadSource;
+use App\Models\User;
 use App\Services\Meta\MetaApiException;
 use App\Services\Meta\MetaFieldMappingService;
 use App\Services\Meta\MetaFormService;
@@ -21,6 +22,7 @@ use App\Support\SettingDefinitions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -92,6 +94,7 @@ class FacebookIntegrationController extends Controller
                 'mapping' => $this->mapping->summary($form),
             ])->values(),
             'sources' => LeadSource::query()->where('is_active', true)->orderBy('sort_order')->get(['id', 'name']),
+            'assignees' => User::query()->active()->orderBy('name')->get(['id', 'name']),
             'settings' => collect(SettingDefinitions::forGroup('facebook'))
                 ->map(fn ($definition, $key) => [
                     'key' => $key,
@@ -243,6 +246,10 @@ class FacebookIntegrationController extends Controller
         $rules = [];
         foreach (SettingDefinitions::forGroup('facebook') as $key => $definition) {
             $rules['settings.'.substr($key, strlen('facebook.'))] = $definition['rules'];
+        }
+
+        if ((int) $request->input('settings.auto_assign_user_id', 0) > 0) {
+            $rules['settings.auto_assign_user_id'][] = Rule::exists('users', 'id')->where('is_active', true)->whereNull('deleted_at');
         }
 
         $values = [];

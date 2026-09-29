@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Services\Security\OfficeNetworkGuard;
 use App\Services\SettingService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -43,6 +44,7 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        $this->ensureOfficeNetwork();
         $this->ensureIsNotRateLimited();
 
         $credentials = $this->only('email', 'password');
@@ -61,6 +63,20 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function ensureOfficeNetwork(): void
+    {
+        if (app(OfficeNetworkGuard::class)->allows($this->ip())) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'email' => OfficeNetworkGuard::MESSAGE,
+        ]);
     }
 
     /**

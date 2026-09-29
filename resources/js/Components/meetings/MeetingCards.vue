@@ -33,7 +33,7 @@ const edgeClass = (m) => {
                 <Link :href="route('meetings.show', m.id)" class="mt-1 block truncate text-sm font-medium text-slate-900 hover:text-brand-700">{{ m.title }}</Link>
                 <p class="truncate text-2xs text-slate-500">
                     {{ m.meeting_number }} · {{ durationLabel(m.duration_minutes) }}
-                    <template v-if="showLead && m.lead"> · <Link :href="route('leads.show', m.lead.id)" class="font-medium text-slate-700 hover:text-brand-700">{{ m.lead.full_name }}</Link></template>
+                    <template v-if="showLead && m.lead"> · <Link :href="route('leads.show', m.lead.id)" class="font-medium text-slate-700 hover:text-brand-700">{{ m.lead.full_name }}</Link> · ID {{ m.lead.id }}</template>
                     <template v-if="showHost && m.host"> · {{ m.host.name }}</template>
                     <template v-if="m.outcome"> · {{ m.outcome }}</template>
                 </p>

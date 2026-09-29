@@ -72,11 +72,17 @@ final class SettingDefinitions
 
             'security.password_min_length' => ['type' => 'integer', 'label' => 'Minimum password length', 'default' => 12, 'rules' => ['required', 'integer', 'min:8', 'max:64']],
             'security.max_login_attempts' => ['type' => 'integer', 'label' => 'Failed logins before lockout', 'default' => 5, 'rules' => ['required', 'integer', 'min:3', 'max:20']],
+            'security.office_wifi_only' => ['type' => 'boolean', 'label' => 'Allow the CRM only on the Medawk office WiFi', 'default' => false, 'rules' => ['boolean'],
+                'help' => 'Sign-in and every signed-in page are refused from any other network. Meta and phone webhooks are not affected. Save at least one IP below or this stays off. If you lock yourself out, set OFFICE_WIFI_BYPASS=true in the server environment and reload config.'],
+            'security.office_wifi_ips' => ['type' => 'string', 'label' => 'Medawk WiFi public IPs', 'default' => '', 'rules' => ['nullable', 'string', 'max:1000'],
+                'help' => 'Comma or line separated. Use the public IP shown below while you are on the Medawk WiFi, or a range such as 203.0.113.0/24.'],
 
             // Managed on Admin → Integrations → Facebook (facebook.manage), not the generic settings screen.
             'facebook.placeholder_name' => ['type' => 'string', 'label' => 'Name used when a Meta lead has no name', 'default' => 'Facebook Lead', 'rules' => ['required', 'string', 'max:100']],
             'facebook.use_instagram_source' => ['type' => 'boolean', 'label' => 'Use the "Instagram" lead source for leads submitted on Instagram', 'default' => true, 'rules' => ['boolean']],
             'facebook.auto_enable_new_forms' => ['type' => 'boolean', 'label' => 'Ingest leads from newly discovered forms automatically', 'default' => true, 'rules' => ['boolean']],
+            'facebook.auto_assign_user_id' => ['type' => 'integer', 'label' => 'Automatically assign new Facebook leads to', 'default' => 0, 'rules' => ['nullable', 'integer', 'min:0'],
+                'help' => 'When a person is selected, every new Facebook lead is assigned to them. Leave this on assignment rules to keep form and source routing.'],
             'facebook.notify_on_repeat_enquiry' => ['type' => 'boolean', 'label' => 'Notify the owner when an existing lead submits another Meta form', 'default' => true, 'rules' => ['boolean']],
             'facebook.event_retention_days' => ['type' => 'integer', 'label' => 'Keep completed webhook event records for (days)', 'default' => 180, 'rules' => ['required', 'integer', 'min:7', 'max:730']],
 

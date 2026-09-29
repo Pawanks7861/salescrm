@@ -31,7 +31,7 @@ class LeadAssignedNotification extends Notification implements BrowserPushable
         return [
             'category' => 'lead',
             'event' => 'lead_assigned',
-            'message' => ($this->reassigned ? 'Lead reassigned to you: ' : 'New lead assigned to you: ')."{$name} ({$this->lead->lead_number})",
+            'message' => ($this->reassigned ? 'Lead reassigned to you: ' : 'New lead assigned to you: ')."{$name} (ID {$this->lead->id} · {$this->lead->lead_number})",
             'lead_id' => $this->lead->id,
             'lead_number' => $this->lead->lead_number,
             'url' => route('leads.show', $this->lead->id, false),

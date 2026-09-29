@@ -23,6 +23,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 const props = defineProps({
     meeting: Object,
     history: Array,
+    notes: { type: Array, default: () => [] },
     options: Object,
     can: Object,
 });
@@ -70,6 +71,9 @@ const existingUserIds = computed(() => [m.value.host_user_id, ...m.value.partici
 
 const attendanceColor = { pending: 'slate', confirmed: 'indigo', attended: 'green', absent: 'red', declined: 'amber' };
 
+const noteForm = useForm({ body: '' });
+const saveNote = () => noteForm.post(route('meetings.notes.store', m.value.id), { preserveScroll: true, onSuccess: () => noteForm.reset() });
+
 const details = computed(() => [
     ['Date', formatRange(m.value.start_at, m.value.end_at)],
     ['Duration', durationLabel(m.value.duration_minutes)],
@@ -87,7 +91,7 @@ const details = computed(() => [
                 <Link :href="route('meetings.index')" class="hover:text-slate-700">Meetings</Link>
                 <template v-if="m.lead">
                     <span class="mx-1">/</span>
-                    <Link :href="route('leads.show', m.lead.id)" class="hover:text-slate-700">{{ m.lead.full_name }}</Link>
+                    <Link :href="route('leads.show', m.lead.id)" class="hover:text-slate-700">{{ m.lead.full_name }} · ID {{ m.lead.id }}</Link>
                 </template>
             </template>
             <template #actions>
@@ -166,6 +170,25 @@ const details = computed(() => [
                     <p class="px-4 pb-3 text-2xs text-slate-400">External contacts and leads are not sent invitations automatically.</p>
                 </div>
 
+                <div class="panel">
+                    <div class="panel-header"><h2 class="panel-title">Admin notes</h2></div>
+                    <ul v-if="notes.length" class="divide-y divide-slate-100">
+                        <li v-for="n in notes" :key="n.id" class="px-4 py-3 text-sm">
+                            <p class="whitespace-pre-line text-slate-800">{{ n.body }}</p>
+                            <p class="mt-1 text-2xs text-slate-500">{{ n.author }} · {{ formatDateTime(n.created_at) }}</p>
+                        </li>
+                    </ul>
+                    <p v-else class="px-4 py-3 text-xs text-slate-500">No notes yet.</p>
+                    <form v-if="can.addNote" class="space-y-2 border-t border-slate-100 p-4" @submit.prevent="saveNote">
+                        <FormField label="Note for the salesperson" :error="noteForm.errors.body">
+                            <textarea v-model="noteForm.body" rows="3" class="form-input" maxlength="5000" placeholder="What should the salesperson know?" />
+                        </FormField>
+                        <div class="flex justify-end">
+                            <UiButton type="submit" size="sm" :loading="noteForm.processing">Save and notify</UiButton>
+                        </div>
+                    </form>
+                </div>
+
                 <div v-if="m.status === 'completed' || m.status === 'no_show'" class="panel">
                     <div class="panel-header"><h2 class="panel-title">{{ m.status === 'completed' ? 'Outcome' : 'No-show' }}</h2></div>
                     <dl class="grid gap-x-6 gap-y-3 p-5 text-sm sm:grid-cols-2">
@@ -189,7 +212,7 @@ const details = computed(() => [
                     <div class="panel-header"><h2 class="panel-title">Lead</h2></div>
                     <div class="p-4 text-sm">
                         <Link :href="route('leads.show', m.lead.id)" class="font-medium text-slate-900 hover:text-brand-700">{{ m.lead.full_name }}</Link>
-                        <p class="text-2xs text-slate-500">{{ m.lead.lead_number }}<template v-if="m.lead.company_name"> · {{ m.lead.company_name }}</template></p>
+                        <p class="text-2xs text-slate-500">ID {{ m.lead.id }} · {{ m.lead.lead_number }}<template v-if="m.lead.company_name"> · {{ m.lead.company_name }}</template></p>
                     </div>
                 </div>
 

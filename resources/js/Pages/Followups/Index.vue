@@ -128,7 +128,7 @@ const tabCount = { red: 'bg-red-100 text-red-600', amber: 'bg-amber-100 text-amb
                             <td class="whitespace-nowrap text-xs font-semibold" :class="dueClass(f.state)" :title="formatDateTime(f.scheduled_at)">{{ formatDue(f.scheduled_at) }}</td>
                             <td>
                                 <Link v-if="f.lead" :href="route('leads.show', f.lead.id)" class="font-medium text-slate-900 hover:text-brand-700">{{ f.lead.full_name }}</Link>
-                                <p v-if="f.lead" class="text-2xs text-slate-500">{{ f.lead.lead_number }} · {{ f.lead.phone ?? '—' }}</p>
+                                <p v-if="f.lead" class="text-2xs text-slate-500">ID {{ f.lead.id }} · {{ f.lead.lead_number }} · {{ f.lead.phone ?? '—' }}</p>
                             </td>
                             <td>
                                 <UiBadge v-if="f.type" :color="f.type.color"><AppIcon v-if="f.type.icon" :name="f.type.icon" class="h-3 w-3" />{{ f.type.name }}</UiBadge>

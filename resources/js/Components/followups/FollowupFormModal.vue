@@ -85,7 +85,7 @@ const submit = (confirmDuplicate = false) => {
         <form @submit.prevent="submit(false)">
             <div class="modal-header">
                 <h3 class="text-sm font-semibold">{{ editing ? 'Edit follow-up' : 'Schedule follow-up' }}</h3>
-                <p v-if="lead" class="text-2xs text-slate-500">{{ lead.full_name }} · {{ lead.lead_number }}</p>
+                <p v-if="lead" class="text-2xs text-slate-500">{{ lead.full_name }} · ID {{ lead.id }} · {{ lead.lead_number }}</p>
             </div>
 
             <div class="grid gap-3 p-5 sm:grid-cols-2">

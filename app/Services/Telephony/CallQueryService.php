@@ -71,7 +71,8 @@ class CallQueryService
                 ->where('calls.call_number', 'like', "%{$term}%")
                 ->orWhereHas('lead', fn (Builder $l) => $l->where(fn (Builder $w) => $w
                     ->where('leads.full_name', 'like', "%{$term}%")
-                    ->orWhere('leads.lead_number', 'like', "%{$term}%"))));
+                    ->orWhere('leads.lead_number', 'like', "%{$term}%")
+                    ->when(ctype_digit($term), fn (Builder $w) => $w->orWhere('leads.id', (int) $term)))));
         }
 
         return $query->orderByDesc('calls.started_at')->orderByDesc('calls.id');

@@ -80,6 +80,11 @@ class Meeting extends Model
         return $this->hasMany(MeetingReminder::class);
     }
 
+    public function adminNotes(): HasMany
+    {
+        return $this->hasMany(MeetingNote::class)->latest('id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by')->withTrashed();

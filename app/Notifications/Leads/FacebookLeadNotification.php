@@ -41,8 +41,8 @@ class FacebookLeadNotification extends Notification implements BrowserPushable
             'category' => 'lead',
             'event' => $this->kind === 'enquiry' ? 'facebook_enquiry' : 'facebook_lead_assigned',
             'message' => $this->kind === 'enquiry'
-                ? "New {$this->channel} enquiry from existing lead: {$name}"
-                : "New {$this->channel} lead assigned: {$name}",
+                ? "New {$this->channel} enquiry from existing lead: {$name} (ID {$this->lead->id})"
+                : "New {$this->channel} lead assigned: {$name} (ID {$this->lead->id})",
             'lead_id' => $this->lead->id,
             'lead_number' => $this->lead->lead_number,
             'lead_name' => $name,

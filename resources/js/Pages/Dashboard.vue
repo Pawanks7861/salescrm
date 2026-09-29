@@ -116,7 +116,7 @@ const greeting = computed(() => {
                         <li v-for="l in sales.recentlyAssigned" :key="l.id" class="flex items-center justify-between gap-2 px-4 py-2">
                             <div class="min-w-0">
                                 <Link :href="route('leads.show', l.id)" class="block truncate text-sm font-medium text-slate-900 hover:text-brand-700">{{ l.full_name }}</Link>
-                                <p class="truncate text-2xs text-slate-500">{{ l.lead_number }}<template v-if="l.company_name"> · {{ l.company_name }}</template> · assigned {{ timeAgo(l.assigned_at) }}</p>
+                                <p class="truncate text-2xs text-slate-500">ID {{ l.id }} · {{ l.lead_number }}<template v-if="l.company_name"> · {{ l.company_name }}</template> · assigned {{ timeAgo(l.assigned_at) }}</p>
                             </div>
                             <UiBadge v-if="l.status" :color="l.status.color">{{ l.status.name }}</UiBadge>
                         </li>
@@ -206,7 +206,7 @@ const greeting = computed(() => {
                             <p class="text-2xs font-medium uppercase tracking-wide text-brand-700">Next meeting</p>
                             <Link :href="route('meetings.show', meetings.next.id)" class="block truncate text-sm font-medium text-slate-900 hover:text-brand-700">{{ meetings.next.title }}</Link>
                             <p class="truncate text-2xs text-slate-600">
-                                {{ formatDue(meetings.next.start_at) }}<template v-if="meetings.next.lead"> · {{ meetings.next.lead.full_name }}</template><template v-if="meetings.scope !== 'My' && meetings.next.host"> · {{ meetings.next.host.name }}</template>
+                                {{ formatDue(meetings.next.start_at) }}<template v-if="meetings.next.lead"> · {{ meetings.next.lead.full_name }} · ID {{ meetings.next.lead.id }}</template><template v-if="meetings.scope !== 'My' && meetings.next.host"> · {{ meetings.next.host.name }}</template>
                             </p>
                         </div>
                         <p class="px-4 pt-2 text-2xs font-medium uppercase tracking-wide text-slate-500">Today</p>

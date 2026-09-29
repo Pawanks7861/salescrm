@@ -91,11 +91,11 @@ const submit = () => {
 </script>
 
 <template>
-    <AppLayout :title="isEdit ? `Edit ${lead.lead_number}` : 'New lead'">
-        <PageHeader :title="isEdit ? `Edit lead ${lead.lead_number}` : 'New lead'">
+    <AppLayout :title="isEdit ? `Edit ID ${lead.id}` : 'New lead'">
+        <PageHeader :title="isEdit ? `Edit lead ${lead.id} · ${lead.lead_number}` : 'New lead'">
             <template #breadcrumb>
                 <Link :href="route('leads.index')" class="hover:text-slate-700">Leads</Link>
-                <template v-if="isEdit"> / <Link :href="route('leads.show', lead.id)" class="hover:text-slate-700">{{ lead.lead_number }}</Link></template>
+                <template v-if="isEdit"> / <Link :href="route('leads.show', lead.id)" class="hover:text-slate-700">{{ lead.id }} · {{ lead.lead_number }}</Link></template>
             </template>
         </PageHeader>
 
@@ -110,7 +110,7 @@ const submit = () => {
                             <p v-if="form.errors.duplicate" class="text-xs text-amber-800">{{ form.errors.duplicate }}</p>
                             <ul class="mt-2 divide-y divide-amber-200 text-xs">
                                 <li v-for="m in matches" :key="m.id" class="flex flex-wrap items-center gap-2 py-1.5">
-                                    <Link :href="route('leads.show', m.id)" class="link font-mono" target="_blank">{{ m.lead_number }}</Link>
+                                    <Link :href="route('leads.show', m.id)" class="link font-mono" target="_blank">{{ m.id }} · {{ m.lead_number }}</Link>
                                     <span class="font-medium text-slate-800">{{ m.full_name }}</span>
                                     <UiBadge v-if="m.status" :color="m.status.color">{{ m.status.name }}</UiBadge>
                                     <span class="text-slate-500">Owner: {{ m.assignee ?? 'Unassigned' }} · matched on {{ m.matched_on.replace('_', ' ') }} · {{ formatDate(m.created_at) }}</span>

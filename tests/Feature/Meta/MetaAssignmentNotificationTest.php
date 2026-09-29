@@ -135,7 +135,7 @@ test('the assignee gets one "New Facebook lead assigned" notification linking to
     $notifications = $this->org->rahul->notifications()->get();
     expect($notifications)->toHaveCount(1);
     $data = $notifications->first()->data;
-    expect($data['message'])->toBe('New Facebook lead assigned: Amit Desai')
+    expect($data['message'])->toBe("New Facebook lead assigned: Amit Desai (ID {$lead->id})")
         ->and($data['lead_id'])->toBe($lead->id)
         ->and($data['lead_number'])->toBe($lead->lead_number)
         ->and($data['source'])->toBe('Facebook')

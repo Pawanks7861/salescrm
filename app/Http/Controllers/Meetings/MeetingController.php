@@ -116,9 +116,16 @@ class MeetingController extends Controller
                 'lostReasons' => $canChangeStatus ? $leadOptions->lostReasons() : [],
                 'followup' => $canFollowup ? $followupOptions->form($user) : null,
             ],
+            'notes' => $meeting->adminNotes()->with('author:id,name')->get()->map(fn ($note) => [
+                'id' => $note->id,
+                'body' => $note->body,
+                'author' => $note->author?->name ?? 'Admin',
+                'created_at' => $note->created_at?->toIso8601String(),
+            ])->values(),
             'can' => [
                 'changeLeadStatus' => (bool) $canChangeStatus,
                 'scheduleFollowup' => (bool) $canFollowup,
+                'addNote' => $user->can('addNote', $meeting),
             ],
         ]);
     }

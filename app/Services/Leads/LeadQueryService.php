@@ -50,8 +50,9 @@ class LeadQueryService
             ->when($filters['priority'] ?? null, fn (Builder $q, $v) => $q->where('priority', (string) $v))
             ->when($filters['city'] ?? null, fn (Builder $q, $v) => $q->where('city', 'like', $this->escape((string) $v).'%'))
             ->when($filters['state'] ?? null, fn (Builder $q, $v) => $q->where('state', 'like', $this->escape((string) $v).'%'))
-            ->when($filters['created_from'] ?? null, fn (Builder $q, $v) => $q->where('created_at', '>=', $this->date($v, false)))
-            ->when($filters['created_to'] ?? null, fn (Builder $q, $v) => $q->where('created_at', '<=', $this->date($v, true)))
+            ->when(empty($filters['on']) ? ($filters['created_from'] ?? null) : null, fn (Builder $q, $v) => $q->where('created_at', '>=', $this->date($v, false)))
+            ->when(empty($filters['on']) ? ($filters['created_to'] ?? null) : null, fn (Builder $q, $v) => $q->where('created_at', '<=', $this->date($v, true)))
+            ->when($filters['on'] ?? null, fn (Builder $q, $v) => $q->whereBetween('created_at', [$this->date($v, false), $this->date($v, true)]))
             ->when(! empty($filters['duplicates']), fn (Builder $q) => $q->where('is_duplicate', true));
 
         $assignee = $filters['assignee'] ?? null;
@@ -103,12 +104,19 @@ class LeadQueryService
             $normalized = $this->phones->normalize($term);
 
             return $query->where(fn (Builder $q) => $q->whereIn('normalized_phone', array_unique([$normalized, $digits]))
-                ->orWhereIn('normalized_alternate_phone', array_unique([$normalized, $digits])));
+                ->orWhereIn('normalized_alternate_phone', array_unique([$normalized, $digits]))
+                ->orWhere('facebook_lead_id', $digits)
+                ->when((string) (int) $digits === $digits, fn (Builder $q) => $q->orWhere('id', (int) $digits)));
         }
 
         if ($looksLikePhone && strlen($digits) >= 4) {
             return $query->where(fn (Builder $q) => $q->where('normalized_phone', 'like', '%'.$digits)
-                ->orWhere('normalized_alternate_phone', 'like', '%'.$digits));
+                ->orWhere('normalized_alternate_phone', 'like', '%'.$digits)
+                ->when((string) (int) $digits === $digits, fn (Builder $q) => $q->orWhere('id', (int) $digits)));
+        }
+
+        if ($looksLikePhone && $digits !== '' && (string) (int) $digits === $digits) {
+            return $query->where('id', (int) $digits);
         }
 
         $like = $this->escape($term).'%';

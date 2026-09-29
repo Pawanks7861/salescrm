@@ -159,7 +159,7 @@ class AgeingReport extends ReportDefinition
             $reasons = array_values(array_filter(array_map(fn ($k) => $lead->{"n_{$k}"} ? PipelineMetrics::NEGLECT_REASONS[$k] : null, array_keys(PipelineMetrics::NEGLECT_REASONS))));
 
             return [
-                'lead_number' => $lead->lead_number,
+                'lead_number' => $lead->id.' · '.$lead->lead_number,
                 'name' => $lead->full_name,
                 'status' => $this->lookups->statusName($lead->status_id),
                 'owner' => $this->lookups->userName($lead->assigned_to),

@@ -15,6 +15,7 @@ const props = defineProps({
     branding: { type: Object, default: null },
     can: Object,
     version: { type: String, default: null },
+    network: { type: Object, default: null },
 });
 
 // Keys contain dots, so values are nested as settings[group][name].
@@ -46,10 +47,16 @@ const submit = () => form.put(route('admin.settings.update', props.group), { pre
 
             <form class="panel flex-1" @submit.prevent="submit">
                 <div class="panel-header"><h2 class="panel-title">{{ groups[group] }}</h2></div>
+                <div v-if="network" class="border-b border-slate-100 px-4 py-3 text-xs text-slate-600">
+                    You are connecting from <span class="font-mono text-slate-900">{{ network.client_ip }}</span>.
+                    <template v-if="network.restricted"> This address {{ network.allowed_here ? 'is on' : 'is not on' }} the Medawk WiFi list.</template>
+                    <template v-else> Copy it into the IP list while you are on the Medawk WiFi, then turn the restriction on.</template>
+                </div>
                 <div class="grid gap-4 p-4 md:grid-cols-2">
                     <template v-for="field in fields" :key="field.key">
-                        <div v-if="field.type === 'boolean'" class="flex items-center md:col-span-2">
+                        <div v-if="field.type === 'boolean'" class="md:col-span-2">
                             <UiToggle v-model="form.settings[group][field.name]" :label="field.label" :disabled="!can.manage" />
+                            <p v-if="field.help" class="mt-1 text-2xs text-slate-500">{{ field.help }}</p>
                         </div>
                         <FormField v-else :label="field.label" :error="errorFor(field)" :hint="field.help">
                             <select v-if="field.key === 'general.timezone'" v-model="form.settings[group][field.name]" class="form-input" :disabled="!can.manage">
@@ -58,6 +65,12 @@ const submit = () => form.put(route('admin.settings.update', props.group), { pre
                             <select v-else-if="field.options" v-model="form.settings[group][field.name]" class="form-input" :disabled="!can.manage">
                                 <option v-for="(label, value) in field.options" :key="value" :value="field.type === 'integer' ? Number(value) : value">{{ label }}</option>
                             </select>
+                            <textarea
+                                v-else-if="field.key === 'security.office_wifi_ips'"
+                                v-model="form.settings[group][field.name]"
+                                class="form-input min-h-20 font-mono"
+                                :disabled="!can.manage"
+                            />
                             <input
                                 v-else
                                 v-model="form.settings[group][field.name]"

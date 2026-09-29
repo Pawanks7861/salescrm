@@ -20,6 +20,7 @@ const props = defineProps({
     forms: Array,
     sources: Array,
     settings: Array,
+    assignees: { type: Array, default: () => [] },
     recentFailures: Array,
 });
 
@@ -308,7 +309,13 @@ const copy = async (text, key) => {
                     <div class="panel-header"><h2 class="panel-title">Lead handling</h2></div>
                     <div class="space-y-4 p-5">
                         <template v-for="s in settings" :key="s.key">
-                            <label v-if="s.type === 'boolean'" class="flex items-center justify-between gap-3 text-sm text-slate-700">
+                            <FormField v-if="s.name === 'auto_assign_user_id'" :label="s.label" :error="settingsForm.errors[`settings.${s.name}`]" hint="New Facebook leads go to this person. Assignment rules are used when this stays on the default.">
+                                <select v-model.number="settingsForm.settings[s.name]" class="form-input">
+                                    <option :value="0">Use assignment rules</option>
+                                    <option v-for="u in assignees" :key="u.id" :value="u.id">{{ u.name }}</option>
+                                </select>
+                            </FormField>
+                            <label v-else-if="s.type === 'boolean'" class="flex items-center justify-between gap-3 text-sm text-slate-700">
                                 <span>{{ s.label }}</span>
                                 <UiToggle v-model="settingsForm.settings[s.name]" />
                             </label>
@@ -317,7 +324,7 @@ const copy = async (text, key) => {
                                 <input v-else v-model.number="settingsForm.settings[s.name]" type="number" class="form-input w-32" />
                             </FormField>
                         </template>
-                        <p class="rounded-md bg-slate-50 p-2.5 text-2xs text-slate-600">Duplicate handling (merge / flag / allow) and assignment follow the global lead settings and assignment rules — use the “Facebook form” rule condition to route specific forms.</p>
+                        <p class="rounded-md bg-slate-50 p-2.5 text-2xs text-slate-600">Duplicate handling (merge / flag / allow) still follows the global lead settings. Choose a person above to send every new Facebook lead to them, or leave assignment rules to route by form.</p>
                     </div>
                     <div class="flex justify-end bg-slate-50 px-4 py-3">
                         <UiButton type="submit" :loading="settingsForm.processing">Save</UiButton>

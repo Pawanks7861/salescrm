@@ -174,7 +174,7 @@ const submit = () => {
         <form @submit.prevent="submit">
             <div class="modal-header">
                 <h3 class="text-sm font-semibold">{{ editing ? `Edit ${meeting.meeting_number}` : 'Schedule meeting' }}</h3>
-                <p v-if="currentLead" class="text-2xs text-slate-500">{{ currentLead.full_name }} · {{ currentLead.lead_number }}</p>
+                <p v-if="currentLead" class="text-2xs text-slate-500">{{ currentLead.full_name }} · ID {{ currentLead.id }} · {{ currentLead.lead_number }}</p>
             </div>
 
             <div class="max-h-[70vh] space-y-5 overflow-y-auto p-5">
