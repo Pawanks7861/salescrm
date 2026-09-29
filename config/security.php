@@ -31,6 +31,13 @@ return [
             'https://*.exotel.in', 'wss://*.exotel.in',
         ],
 
+        // Browser calls these when registering an FCM token. The private key stays on the server.
+        'fcm_hosts' => [
+            'https://firebaseinstallations.googleapis.com',
+            'https://fcmregistrations.googleapis.com',
+            'https://firebase.googleapis.com',
+        ],
+
         'extra_connect_src' => $list(env('CSP_EXTRA_CONNECT_SRC')),
         'extra_script_src' => $list(env('CSP_EXTRA_SCRIPT_SRC')),
     ],

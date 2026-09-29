@@ -55,7 +55,7 @@ class SecurityHeaders
             'font-src' => ["'self'", 'data:', 'https://fonts.bunny.net'],
             'img-src' => ["'self'", 'data:', 'blob:', 'https://*.fbcdn.net', 'https://*.fbsbx.com'],
             'media-src' => ["'self'", 'blob:', ...$exotel],
-            'connect-src' => ["'self'", ...$exotel, ...(array) config('security.csp.extra_connect_src', [])],
+            'connect-src' => ["'self'", ...$exotel, ...(array) config('security.csp.fcm_hosts', []), ...(array) config('security.csp.extra_connect_src', [])],
             'worker-src' => ["'self'"],
             'manifest-src' => ["'self'"],
             'frame-src' => ["'self'"],

@@ -3,6 +3,7 @@
 namespace App\Notifications\Leads;
 
 use App\Models\Lead;
+use App\Notifications\Channels\FcmChannel;
 use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Contracts\BrowserPushable;
 use Illuminate\Notifications\Notification;
@@ -24,7 +25,7 @@ class FacebookLeadNotification extends Notification implements BrowserPushable
 
     public function via(object $notifiable): array
     {
-        return ['database', WebPushChannel::class];
+        return ['database', WebPushChannel::class, FcmChannel::class];
     }
 
     /** Only new assignments are pushed; repeat enquiries stay in-app. */

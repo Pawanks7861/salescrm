@@ -29,6 +29,7 @@
         "@fullcalendar/timegrid": "6.1",
         "@fullcalendar/vue3": "6.1",
         "@heroicons/vue": "^2.2.0",
-        "chart.js": "^4.4.0"
+        "chart.js": "^4.4.0",
+        "firebase": "11.10.0"
     }
 }

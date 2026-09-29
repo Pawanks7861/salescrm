@@ -17,6 +17,7 @@ beforeEach(function () {
         'telephony.exotel.webhook_secret' => 'EXOTEL-HOOK-EXPOSE-5',
         'telephony.exotel.webrtc_access_token' => 'EXOTEL-WEBRTC-EXPOSE-6',
         'webpush.vapid.private_key' => 'VAPID-PRIVATE-EXPOSE-7',
+        'fcm.private_key' => 'FCM-PRIVATE-EXPOSE-10',
         'database.connections.mysql.password' => 'DB-PASSWORD-EXPOSE-8',
         'mail.mailers.smtp.password' => 'SMTP-PASSWORD-EXPOSE-9',
     ];

@@ -21,7 +21,7 @@ beforeEach(function () {
 test('only users with call.configure can open the telephony admin page', function () {
     $this->actingAs($this->org->rahul)->get(route('admin.integrations.telephony.index'))->assertForbidden();
     $this->actingAs($this->org->manager)->get(route('admin.integrations.telephony.index'))->assertForbidden();
-    $this->actingAs($this->org->admin)->get(route('admin.integrations.telephony.index'))->assertOk();
+    $this->actingAs($this->org->admin)->get(route('admin.integrations.telephony.index'))->assertForbidden();
     $this->actingAs($this->org->super)->get(route('admin.integrations.telephony.index'))
         ->assertOk()->assertInertia(fn (Assert $page) => $page->component('Admin/Integrations/Telephony/Index'));
 });
@@ -34,7 +34,7 @@ test('the admin page never calls the provider and never exposes credentials', fu
         'telephony.exotel.webhook_secret' => 'secret-hook-value',
     ]);
 
-    $response = $this->actingAs($this->org->admin)->get(route('admin.integrations.telephony.index'))->assertOk();
+    $response = $this->actingAs($this->org->super)->get(route('admin.integrations.telephony.index'))->assertOk();
 
     Http::assertNothingSent();
     expect($response->getContent())
@@ -51,7 +51,7 @@ test('sales users cannot change telephony configuration', function () {
 });
 
 test('integration changes are audited', function () {
-    $this->actingAs($this->org->admin)->put(route('admin.integrations.telephony.integration'), [
+    $this->actingAs($this->org->super)->put(route('admin.integrations.telephony.integration'), [
         'name' => 'Sales telephony', 'is_active' => true, 'browser_calling_enabled' => false,
         'pstn_calling_enabled' => true, 'recording_enabled' => true, 'default_calling_mode' => 'pstn',
     ])->assertSessionHasNoErrors();
@@ -64,20 +64,20 @@ test('integration changes are audited', function () {
 test('numbers are validated, de-duplicated and audited', function () {
     $payload = ['phone_number' => '+91 80000 00002', 'display_name' => 'Support', 'number_type' => 'virtual', 'is_active' => true];
 
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.numbers.store'), $payload)->assertSessionHasNoErrors();
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.numbers.store'), $payload)->assertSessionHasErrors('phone_number');
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.numbers.store'), [...$payload, 'phone_number' => 'abc'])->assertSessionHasErrors('phone_number');
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.numbers.store'), $payload)->assertSessionHasNoErrors();
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.numbers.store'), $payload)->assertSessionHasErrors('phone_number');
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.numbers.store'), [...$payload, 'phone_number' => 'abc'])->assertSessionHasErrors('phone_number');
 
     expect(TelephonyNumber::where('normalized_number', '918000000002')->count())->toBe(1)
         ->and(AuditLog::where('action', AuditAction::TelephonyConfigurationChanged->value)->exists())->toBeTrue();
 });
 
 test('calling accounts are one per user and audited', function () {
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.agents.store'), [
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.agents.store'), [
         'user_id' => $this->org->priya->id, 'registered_phone' => '+91 90000 00077', 'calling_mode' => 'pstn', 'is_enabled' => true,
     ])->assertSessionHasNoErrors();
 
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.agents.store'), [
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.agents.store'), [
         'user_id' => $this->org->priya->id, 'calling_mode' => 'pstn',
     ])->assertSessionHasErrors('user_id');
 
@@ -86,19 +86,19 @@ test('calling accounts are one per user and audited', function () {
 });
 
 test('dispositions can be added and deactivated but never deleted', function () {
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.dispositions.store'), [
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.dispositions.store'), [
         'name' => 'Price objection', 'color' => 'amber', 'is_contact' => true, 'is_active' => true,
     ])->assertSessionHasNoErrors();
 
     $disposition = CallDisposition::where('name', 'Price objection')->sole();
     expect($disposition->slug)->toBe('price_objection')->and($disposition->is_system)->toBeFalse();
 
-    $this->actingAs($this->org->admin)->put(route('admin.integrations.telephony.dispositions.update', $disposition), [
+    $this->actingAs($this->org->super)->put(route('admin.integrations.telephony.dispositions.update', $disposition), [
         'name' => 'Price objection', 'color' => 'amber', 'is_active' => false,
     ])->assertSessionHasNoErrors();
 
     expect($disposition->fresh()->is_active)->toBeFalse();
-    $this->actingAs($this->org->admin)->delete('/admin/integrations/telephony/dispositions/'.$disposition->id)->assertStatus(405);
+    $this->actingAs($this->org->super)->delete('/admin/integrations/telephony/dispositions/'.$disposition->id)->assertStatus(405);
 });
 
 test('settings updates are validated and audited', function () {
@@ -107,10 +107,10 @@ test('settings updates are validated and audited', function () {
         ->mapWithKeys(fn ($definition, $key) => [substr($key, strlen('telephony.')) => $definition['default']])
         ->all();
 
-    $this->actingAs($this->org->admin)->put(route('admin.integrations.telephony.settings'), ['settings' => [...$form, 'recording_retention_days' => 7]])
+    $this->actingAs($this->org->super)->put(route('admin.integrations.telephony.settings'), ['settings' => [...$form, 'recording_retention_days' => 7]])
         ->assertSessionHasErrors('settings.recording_retention_days');
 
-    $this->actingAs($this->org->admin)->put(route('admin.integrations.telephony.settings'), ['settings' => [...$form, 'recording_retention_days' => 365]])
+    $this->actingAs($this->org->super)->put(route('admin.integrations.telephony.settings'), ['settings' => [...$form, 'recording_retention_days' => 365]])
         ->assertSessionHasNoErrors();
 
     expect((int) app(SettingService::class)->get('telephony.recording_retention_days'))->toBe(365)
@@ -118,7 +118,7 @@ test('settings updates are validated and audited', function () {
 });
 
 test('the health check records the result', function () {
-    $this->actingAs($this->org->admin)->post(route('admin.integrations.telephony.health'))->assertSessionHas('success');
+    $this->actingAs($this->org->super)->post(route('admin.integrations.telephony.health'))->assertSessionHas('success');
 
     expect($this->integration->fresh()->last_health_status)->toBe('connected');
 });
@@ -133,8 +133,8 @@ test('role defaults grant the documented call permissions', function () {
         ->not->toContain('call.recording.listen', 'call.recording.download', 'call.manual_dial', 'call.view_team', 'call.configure')
         ->and($manager)->toContain('call.recording.listen')
         ->not->toContain('call.view_team', 'call.recording.download', 'call.configure', 'call.view_all')
-        ->and($admin)->toContain('call.view_all', 'call.configure', 'call.monitor', 'call.recording.listen')
-        ->not->toContain('call.recording.download');
+        ->and($admin)->toContain('call.view_all', 'call.monitor', 'call.recording.listen')
+        ->not->toContain('call.recording.download', 'call.configure', 'facebook.manage');
 });
 
 test('navigation shows Calls to call users and Telephony only to configurers', function () {
@@ -143,7 +143,8 @@ test('navigation shows Calls to call users and Telephony only to configurers', f
         ->all();
 
     expect($labels($this->org->rahul))->toContain('Calls')->not->toContain('Telephony')
-        ->and($labels($this->org->admin))->toContain('Calls', 'Telephony');
+        ->and($labels($this->org->admin))->toContain('Calls')->not->toContain('Telephony')->not->toContain('Facebook')
+        ->and($labels($this->org->super))->toContain('Calls', 'Telephony', 'Facebook');
 });
 
 test('the lead page lists the lead calls and offers calling by contact field only', function () {

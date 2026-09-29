@@ -5,6 +5,7 @@ import UiButton from '@/Components/ui/UiButton.vue';
 import UiToggle from '@/Components/ui/UiToggle.vue';
 import { useToast } from '@/Composables/useToast';
 import { currentSubscription, disableBrowserPush, enableBrowserPush, isSupported, permissionState } from '@/notifications/browserPush';
+import { registerFcm, unregisterFcm } from '@/notifications/fcm';
 import { playTestSound, unlockAudio } from '@/notifications/sound';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -21,7 +22,9 @@ const sound = ref(Boolean(push.value.sound));
 
 onMounted(async () => {
     try {
-        subscribed.value = Boolean(await currentSubscription());
+        const web = Boolean(await currentSubscription());
+        const fcm = Boolean(push.value.fcm) && permissionState() === 'granted' && Boolean(push.value.browser);
+        subscribed.value = web || fcm;
     } catch {
         subscribed.value = false;
     }
@@ -51,7 +54,20 @@ const enable = async () => {
     busy.value = true;
     try {
         unlockAudio();
-        const result = await enableBrowserPush(push.value.public_key);
+        let result = 'granted';
+        if (push.value.public_key) {
+            result = await enableBrowserPush(push.value.public_key);
+        } else if (!push.value.fcm) {
+            result = 'unsupported';
+        }
+        if (result === 'granted' && push.value.fcm) {
+            try {
+                result = await registerFcm(push.value.fcm);
+            } catch (e) {
+                if (!push.value.public_key) throw e;
+                toast.error('This browser could not register for Firebase notifications.');
+            }
+        }
         permission.value = permissionState();
         if (result === 'granted') {
             subscribed.value = true;
@@ -73,6 +89,7 @@ const disable = async () => {
     busy.value = true;
     try {
         await disableBrowserPush();
+        if (push.value.fcm) await unregisterFcm(push.value.fcm);
         subscribed.value = false;
         await savePrefs({ browser_notifications_enabled: false });
         toast.success('Browser notifications turned off.');

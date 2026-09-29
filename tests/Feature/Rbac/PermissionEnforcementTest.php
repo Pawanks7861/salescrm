@@ -70,7 +70,8 @@ test('admin does not automatically receive role management or facebook permissio
     $role = Role::where('slug', 'sales_executive')->first();
 
     expect($admin->hasPermission(Permissions::ROLE_MANAGE))->toBeFalse()
-        ->and($admin->hasPermission(Permissions::FACEBOOK_MANAGE))->toBeFalse();
+        ->and($admin->hasPermission(Permissions::FACEBOOK_MANAGE))->toBeFalse()
+        ->and($admin->hasPermission(Permissions::CALL_CONFIGURE))->toBeFalse();
 
     $this->actingAs($admin)
         ->put("/admin/roles/{$role->id}/permissions", ['permissions' => Permissions::names()])

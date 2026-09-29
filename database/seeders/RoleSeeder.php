@@ -10,9 +10,10 @@ use Illuminate\Database\Seeder;
 
 /**
  * Creates the default system roles. Full default permissions are only assigned
- * when a role is first created, so admin customisations survive re-seeding.
- * Permissions newly introduced by a release are granted to existing system
- * roles according to these defaults.
+ * when a role is first created, so other admin customisations survive re-seeding.
+ * Facebook and telephony integration are always removed from Admin: Super Admin
+ * keeps those. Permissions newly introduced by a release are granted to existing
+ * system roles according to these defaults.
  */
 class RoleSeeder extends Seeder
 {
@@ -38,7 +39,7 @@ class RoleSeeder extends Seeder
             P::CALL_RECORDING_LISTEN,
         ];
 
-        $excludedFromAdmin = [P::ROLE_MANAGE, P::FACEBOOK_MANAGE, P::LEAD_RESTORE, P::USER_DELETE, P::CALL_RECORDING_DOWNLOAD];
+        $excludedFromAdmin = [P::ROLE_MANAGE, P::FACEBOOK_MANAGE, P::LEAD_RESTORE, P::USER_DELETE, P::CALL_RECORDING_DOWNLOAD, P::CALL_CONFIGURE];
         $admin = array_values(array_diff(P::names(), $excludedFromAdmin));
 
         return [
@@ -65,6 +66,12 @@ class RoleSeeder extends Seeder
             } elseif (! $isNew) {
                 $newlyIntroduced = array_intersect($definition['permissions'], PermissionSeeder::$created);
                 $role->permissions()->syncWithoutDetaching(Permission::whereIn('name', $newlyIntroduced)->pluck('id'));
+            }
+
+            if ($slug === 'admin') {
+                $role->permissions()->detach(
+                    Permission::whereIn('name', [P::FACEBOOK_MANAGE, P::CALL_CONFIGURE])->pluck('id')
+                );
             }
         }
 

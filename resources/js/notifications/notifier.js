@@ -13,6 +13,7 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { ref } from 'vue';
 import { setPushOwner, syncBrowserPush } from './browserPush';
+import { syncFcm } from './fcm';
 import { createAnnouncer, createDeduper, isFresh } from './rules';
 import { play, unlockOnFirstGesture } from './sound';
 
@@ -78,7 +79,8 @@ async function onWorkerMessage(e) {
         reply({ ok });
     } else if (msg.type === 'crm:resubscribe') {
         const p = getProps().push ?? {};
-        if (p.available && p.browser) syncBrowserPush(p.public_key, { force: true }).catch(() => {});
+        if (p.available && p.browser && p.public_key) syncBrowserPush(p.public_key, { force: true }).catch(() => {});
+        if (p.fcm && p.browser) syncFcm(p.fcm).catch(() => {});
     } else if (msg.type === 'crm:push' && msg.payload?.id) {
         const p = msg.payload;
         const known = deduper.has(p.id);
@@ -124,7 +126,8 @@ export function startNotifier(propsGetter) {
 
     setPushOwner(getProps().auth?.user?.id);
     const p = getProps().push ?? {};
-    if (p.available && p.browser) syncBrowserPush(p.public_key).catch(() => {});
+    if (p.available && p.browser && p.public_key) syncBrowserPush(p.public_key).catch(() => {});
+    if (p.fcm && p.browser) syncFcm(p.fcm).catch(() => {});
 }
 
 export function stopNotifier() {

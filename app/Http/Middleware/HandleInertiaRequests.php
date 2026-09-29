@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use App\Services\BrandingService;
+use App\Services\Notifications\FcmService;
 use App\Services\Notifications\WebPushService;
 use App\Services\SettingService;
 use App\Support\Navigation;
@@ -58,11 +59,14 @@ class HandleInertiaRequests extends Middleware
             'navigation' => $user ? fn () => Navigation::for($user) : [],
             'push' => $user ? function () use ($user) {
                 $push = app(WebPushService::class);
-                $available = $push->isConfigured() && $push->globallyEnabled();
+                $globally = $push->globallyEnabled();
+                $vapid = $push->isConfigured() && $globally;
+                $fcm = $globally ? app(FcmService::class)->webConfig() : null;
 
                 return [
-                    'available' => $available,
-                    'public_key' => $available ? config('webpush.vapid.public_key') : null,
+                    'available' => $vapid || $fcm !== null,
+                    'public_key' => $vapid ? config('webpush.vapid.public_key') : null,
+                    'fcm' => $fcm,
                     'sound_allowed' => $push->soundGloballyEnabled(),
                     'browser' => (bool) $user->browser_notifications_enabled,
                     'sound' => (bool) $user->notification_sound_enabled,

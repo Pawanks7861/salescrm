@@ -47,10 +47,16 @@ test('sales executives can never export or download', function () {
         ->and($this->org->rahul->hasPermission('lead.export'))->toBeFalse();
 });
 
-test('admins cannot manage roles or Facebook, and only Super Admin can', function () {
+test('admins cannot manage roles, Facebook or telephony, and only Super Admin can', function () {
     $this->actingAs($this->org->admin)->get('/admin/integrations/facebook')->assertForbidden();
+    $this->actingAs($this->org->admin)->get('/admin/integrations/telephony')->assertForbidden();
+    $this->actingAs($this->org->super)->get('/admin/integrations/telephony')->assertOk();
     expect($this->org->admin->hasPermission('role.manage'))->toBeFalse()
-        ->and($this->org->super->can('role.manage'))->toBeTrue();
+        ->and($this->org->admin->hasPermission('facebook.manage'))->toBeFalse()
+        ->and($this->org->admin->hasPermission('call.configure'))->toBeFalse()
+        ->and($this->org->super->can('role.manage'))->toBeTrue()
+        ->and($this->org->super->can('call.configure'))->toBeTrue()
+        ->and($this->org->super->can('facebook.manage'))->toBeTrue();
 });
 
 test('managers cannot read the audit log or change settings', function () {

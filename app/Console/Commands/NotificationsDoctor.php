@@ -9,6 +9,7 @@ use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Followups\FollowupReminderNotification;
 use App\Notifications\Leads\FacebookLeadNotification;
 use App\Notifications\Leads\LeadAssignedNotification;
+use App\Services\Notifications\FcmService;
 use App\Services\Notifications\PushEncryptionUnavailable;
 use App\Services\Notifications\WebPushService;
 use App\Support\PushEvent;
@@ -113,6 +114,8 @@ class NotificationsDoctor extends Command
         $this->record('VAPID keys', $push->isConfigured() ? 'PASS' : 'FAIL', $push->isConfigured() ? 'Configured' : 'Missing: php artisan webpush:vapid');
         $this->record('Admin switch: browser', $push->globallyEnabled() ? 'PASS' : 'WARN', $push->globallyEnabled() ? 'On' : 'Off (System Settings → Notifications)');
         $this->record('Admin switch: sound', $push->soundGloballyEnabled() ? 'PASS' : 'WARN', $push->soundGloballyEnabled() ? 'On' : 'Off (System Settings → Notifications)');
+        $fcm = app(FcmService::class);
+        $this->record('FCM', $fcm->isConfigured() ? 'PASS' : 'WARN', $fcm->isConfigured() ? 'Configured' : 'Not configured (optional)');
 
         try {
             PushEncryptionUnavailable::check();
@@ -134,6 +137,11 @@ class NotificationsDoctor extends Command
             ? 'None: click Enable in the browser that should receive notifications'
             : $subs->map(fn ($s) => '#'.$s->id.' '.Str::limit((string) $s->user_agent, 40).' (last push '.($s->last_used_at?->diffForHumans() ?? 'never').')')->implode('; '));
         $this->record('User: push will be sent', $push->shouldPush($user) ? 'PASS' : 'FAIL', $push->shouldPush($user) ? 'All conditions met' : 'Not all conditions above are met');
+
+        if (app(FcmService::class)->isConfigured()) {
+            $devices = $user->fcmTokens()->count();
+            $this->record('User: FCM devices', $devices > 0 ? 'PASS' : 'WARN', $devices > 0 ? "{$devices} registered device(s)" : 'No device has registered');
+        }
 
         $recent = $user->notifications()
             ->whereIn('type', [FollowupReminderNotification::class, LeadAssignedNotification::class, FacebookLeadNotification::class])

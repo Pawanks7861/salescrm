@@ -4,6 +4,7 @@ namespace App\Notifications\Followups;
 
 use App\Models\Followup;
 use App\Models\FollowupReminder;
+use App\Notifications\Channels\FcmChannel;
 use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Contracts\BrowserPushable;
 use App\Services\SettingService;
@@ -24,7 +25,7 @@ class FollowupReminderNotification extends FollowupNotification implements Brows
 
     public function via(object $notifiable): array
     {
-        return ['database', WebPushChannel::class];
+        return ['database', WebPushChannel::class, FcmChannel::class];
     }
 
     /** Only the "before due" reminder is pushed; overdue alerts stay in-app. */
