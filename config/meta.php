@@ -61,4 +61,7 @@ return [
 
     // Maximum look-back for "Sync recent leads" (Meta keeps leads for 90 days).
     'backfill_max_days' => 90,
+
+    // How far back meta:poll-leads looks. 1 matches a fetch of the last day.
+    'poll_days' => max(1, (int) env('META_POLL_DAYS', 1)),
 ];

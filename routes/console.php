@@ -18,7 +18,8 @@ Schedule::call(fn () => Cache::forever(ProductionCheck::SCHEDULER_HEARTBEAT_KEY,
 Schedule::command('followups:dispatch-reminders')->everyMinute()->withoutOverlapping(5);
 Schedule::command('meetings:dispatch-reminders')->everyMinute()->withoutOverlapping(5);
 
-// Meta Lead Ads: recover lost/stuck jobs, daily token + subscription check, ledger retention.
+// Meta Lead Ads: pull new leads without a webhook, recover lost jobs, daily health, ledger retention.
+Schedule::command('meta:poll-leads')->everyFiveMinutes()->withoutOverlapping(5);
 Schedule::command('meta:retry-failed')->everyTenMinutes()->withoutOverlapping(10);
 Schedule::command('meta:check')->dailyAt('03:15')->withoutOverlapping(30);
 Schedule::command('meta:prune-events')->dailyAt('03:45')->withoutOverlapping(30);

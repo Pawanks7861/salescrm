@@ -106,6 +106,7 @@ Inventory (`routes/console.php`; all use `withoutOverlapping`). Times are in the
 | `scheduler-heartbeat` | every minute | Writes a heartbeat read by `app:production-check` (WARN if never seen, FAIL if older than 5 minutes) |
 | `followups:dispatch-reminders` | every minute | Follow-up reminders and overdue alerts |
 | `meetings:dispatch-reminders` | every minute | Meeting reminders |
+| `meta:poll-leads` | every 5 minutes | Pulls the last day of leads for every enabled form (works without a Page webhook) |
 | `meta:retry-failed` | every 10 minutes | Retries failed/pending Meta lead events within the backoff policy |
 | `telephony:reconcile-pending` | every 5 minutes | Closes calls whose final Exotel callback was missed (queries Exotel) |
 | `reports:prune-exports` | hourly | Deletes report export files older than `report.export_retention_hours` (default 24) |
