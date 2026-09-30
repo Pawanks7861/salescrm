@@ -31,6 +31,8 @@ class FcmServiceWorkerController extends Controller
             firebase.initializeApp({$json});
             const messaging = firebase.messaging();
             messaging.onBackgroundMessage((payload) => {
+                const note = payload && payload.notification;
+                if (note && note.title) return;
                 const data = (payload && payload.data) || {};
                 if (!data.id || !data.title) return;
                 const path = typeof data.url === 'string' && data.url.startsWith('/') && !data.url.startsWith('//') ? data.url : '/notifications';

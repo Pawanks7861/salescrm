@@ -5,6 +5,7 @@ use App\Models\AuditLog;
 use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LeadNoteHistory;
+use App\Notifications\Leads\LeadNoteNotification;
 
 beforeEach(function () {
     $this->org = salesOrg();
@@ -63,6 +64,25 @@ test('note route rejects a note that belongs to a different lead', function () {
     $note = LeadNote::sole();
 
     $this->actingAs($this->org->rahul)->put("/leads/{$this->lead->id}/notes/{$note->id}", ['note' => 'x', 'visibility' => 'team'])->assertNotFound();
+});
+
+test('an admin comment notifies the assigned salesperson', function () {
+    $this->actingAs($this->org->admin)
+        ->post("/leads/{$this->lead->id}/notes", ['note' => 'Please call this client today', 'visibility' => 'team'])
+        ->assertRedirect();
+
+    $note = $this->org->rahul->notifications()->where('type', LeadNoteNotification::class)->sole();
+    expect($note->data['event'])->toBe('lead_note')
+        ->and($note->data['message'])->toContain('Anita Admin')
+        ->and($this->org->admin->notifications()->where('type', LeadNoteNotification::class)->count())->toBe(0);
+});
+
+test('a private comment the assignee cannot read is not sent to them', function () {
+    $this->actingAs($this->org->admin)
+        ->post("/leads/{$this->lead->id}/notes", ['note' => 'Internal only', 'visibility' => 'private'])
+        ->assertRedirect();
+
+    expect($this->org->rahul->notifications()->where('type', LeadNoteNotification::class)->count())->toBe(0);
 });
 
 test('sales executive cannot choose management visibility', function () {

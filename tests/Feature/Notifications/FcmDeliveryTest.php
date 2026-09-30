@@ -3,6 +3,7 @@
 use App\Jobs\SendFcmNotification;
 use App\Models\FcmToken;
 use App\Notifications\Channels\WebPushChannel;
+use App\Services\Notifications\FcmClient;
 use App\Services\Notifications\FcmService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -97,6 +98,8 @@ test('a data message is posted to FCM and an unregistered token is deleted', fun
             && $request['message']['token'] === $token
             && $request['message']['data']['id'] === 'note-1'
             && $request['message']['data']['title'] === 'New lead'
+            && $request['message']['webpush']['notification']['title'] === 'New lead'
+            && $request['message']['webpush']['fcm_options']['link'] === FcmClient::absoluteLink('/leads/1')
             && ! isset($request['message']['notification']);
     });
 

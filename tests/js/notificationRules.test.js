@@ -17,15 +17,19 @@ describe('event rules', () => {
         expect(normalizeEvent('NEW_LEAD_ASSIGNED')).toBe('NEW_LEAD_ASSIGNED');
         expect(normalizeEvent('followup_reminder')).toBe('FOLLOWUP_REMINDER');
         expect(normalizeEvent('FOLLOWUP_REMINDER')).toBe('FOLLOWUP_REMINDER');
+        expect(normalizeEvent('lead_note')).toBe('COMMENT');
+        expect(normalizeEvent('meeting_note')).toBe('COMMENT');
         expect(normalizeEvent('followup_overdue')).toBeNull();
         expect(normalizeEvent('toString')).toBeNull();
         expect(normalizeEvent(undefined)).toBeNull();
     });
 
-    it('maps only the two important events to their own sound', () => {
+    it('maps important events to their own sound', () => {
         expect(soundKindFor('NEW_LEAD_ASSIGNED')).toBe('lead');
         expect(soundKindFor('lead_assigned')).toBe('lead');
         expect(soundKindFor('FOLLOWUP_REMINDER')).toBe('reminder');
+        expect(soundKindFor('lead_note')).toBe('lead');
+        expect(soundKindFor('meeting_note')).toBe('lead');
         expect(soundKindFor('import_completed')).toBeNull();
     });
 

@@ -9,9 +9,9 @@ use RuntimeException;
 
 /**
  * Firebase Cloud Messaging HTTP v1. Builds a short-lived Google OAuth token
- * from the service account and posts a data-only message. Nothing here is
- * written to the log: responses and exceptions can contain the device token
- * or the signed assertion.
+ * from the service account and posts a message the browser can display.
+ * Nothing here is written to the log: responses and exceptions can contain
+ * the device token or the signed assertion.
  */
 class FcmClient
 {
@@ -31,23 +31,32 @@ class FcmClient
     public function send(string $deviceToken, array $payload): string
     {
         try {
+            $data = [
+                'id' => (string) $payload['id'],
+                'event' => (string) $payload['event'],
+                'title' => (string) $payload['title'],
+                'body' => (string) $payload['body'],
+                'url' => (string) $payload['url'],
+            ];
             $response = Http::withToken($this->accessToken())
                 ->acceptJson()
                 ->timeout(10)
                 ->post($this->endpoint(), [
                     'message' => [
                         'token' => $deviceToken,
-                        'data' => [
-                            'id' => (string) $payload['id'],
-                            'event' => (string) $payload['event'],
-                            'title' => (string) $payload['title'],
-                            'body' => (string) $payload['body'],
-                            'url' => (string) $payload['url'],
-                        ],
+                        'data' => $data,
                         'webpush' => [
                             'headers' => [
                                 'Urgency' => 'high',
                                 'TTL' => '86400',
+                            ],
+                            'notification' => [
+                                'title' => $data['title'],
+                                'body' => $data['body'],
+                                'tag' => $data['id'],
+                            ],
+                            'fcm_options' => [
+                                'link' => self::absoluteLink($data['url']),
                             ],
                         ],
                     ],
@@ -93,6 +102,16 @@ class FcmClient
         Cache::put($this->cacheKey(), $token, now()->addMinutes(50));
 
         return $token;
+    }
+
+    /** FCM opens this URL when the notification is clicked. It must be absolute. */
+    public static function absoluteLink(string $url): string
+    {
+        if (str_starts_with($url, 'https://') || str_starts_with($url, 'http://')) {
+            return $url;
+        }
+
+        return rtrim((string) config('app.url'), '/').'/'.ltrim($url, '/');
     }
 
     private function endpoint(): string

@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\LeadNote;
 use App\Models\LeadNoteHistory;
 use App\Models\User;
+use App\Notifications\Leads\LeadNoteNotification;
 use App\Services\ActivityService;
 use App\Services\AuditService;
 use App\Support\Permissions;
@@ -97,6 +98,7 @@ class LeadNoteService
 
             $this->activities->record($lead, ActivityService::NOTE_ADDED, "Added a {$visibility->value} note", ['note_id' => $note->id, 'visibility' => $visibility->value]);
             $this->audit->log(AuditAction::LeadNoteCreated, 'leads', $note, "Note added to {$lead->lead_number}", null, ['lead_id' => $lead->id, 'visibility' => $visibility->value]);
+            $this->notifyAssignee($lead, $note, $actor);
 
             return $note;
         });
@@ -142,5 +144,21 @@ class LeadNoteService
             $this->activities->record($lead, ActivityService::NOTE_DELETED, 'Deleted a note', ['note_id' => $note->id]);
             $this->audit->log(AuditAction::LeadNoteDeleted, 'leads', $note, "Note deleted on {$lead->lead_number}", null, ['lead_id' => $lead->id]);
         });
+    }
+
+    /** Tells the lead owner when someone else adds a comment they are allowed to read. */
+    private function notifyAssignee(Lead $lead, LeadNote $note, User $actor): void
+    {
+        $assigneeId = $lead->assigned_to ? (int) $lead->assigned_to : null;
+        if ($assigneeId === null || $assigneeId === (int) $actor->id) {
+            return;
+        }
+
+        $assignee = User::query()->active()->find($assigneeId);
+        if (! $assignee || ! $this->canRead($assignee, $note)) {
+            return;
+        }
+
+        $assignee->notify(new LeadNoteNotification($lead, $actor->name));
     }
 }

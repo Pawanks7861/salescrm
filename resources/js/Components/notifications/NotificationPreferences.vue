@@ -34,7 +34,7 @@ const status = computed(() => {
     if (!push.value.available) return { key: 'off', label: 'Turned off', color: 'slate', text: 'Browser notifications are turned off for this CRM by your administrator.' };
     if (!isSupported()) return { key: 'unsupported', label: 'Not supported', color: 'slate', text: 'This browser does not support notifications here. Use a current Chrome, Edge or Firefox over HTTPS.' };
     if (permission.value === 'denied') return { key: 'blocked', label: 'Blocked', color: 'red', text: 'Browser notifications are blocked. Enable them in your browser settings.' };
-    if (push.value.browser && permission.value === 'granted' && subscribed.value) return { key: 'enabled', label: 'Enabled', color: 'emerald', text: 'This browser will show new leads and follow-up reminders when the CRM is not the active tab.' };
+    if (push.value.browser && permission.value === 'granted' && subscribed.value) return { key: 'enabled', label: 'Enabled', color: 'emerald', text: 'This browser will show new leads, comments, and follow-up reminders when the CRM is not the active tab.' };
     return { key: 'disabled', label: 'Not enabled', color: 'amber', text: 'Receive notifications when the CRM isn’t the active tab.' };
 });
 

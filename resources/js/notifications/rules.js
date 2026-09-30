@@ -9,6 +9,7 @@
 export const EVENTS = Object.freeze({
     NEW_LEAD_ASSIGNED: 'NEW_LEAD_ASSIGNED',
     FOLLOWUP_REMINDER: 'FOLLOWUP_REMINDER',
+    COMMENT: 'COMMENT',
 });
 
 /** In-app (database) event names mapped to the push event they represent. */
@@ -16,14 +17,17 @@ const ALIASES = Object.freeze({
     lead_assigned: EVENTS.NEW_LEAD_ASSIGNED,
     facebook_lead_assigned: EVENTS.NEW_LEAD_ASSIGNED,
     followup_reminder: EVENTS.FOLLOWUP_REMINDER,
+    lead_note: EVENTS.COMMENT,
+    meeting_note: EVENTS.COMMENT,
 });
 
 const SOUNDS = Object.freeze({
     [EVENTS.NEW_LEAD_ASSIGNED]: 'lead',
     [EVENTS.FOLLOWUP_REMINDER]: 'reminder',
+    [EVENTS.COMMENT]: 'lead',
 });
 
-/** NEW_LEAD_ASSIGNED | FOLLOWUP_REMINDER | null (everything else is silent). */
+/** NEW_LEAD_ASSIGNED | FOLLOWUP_REMINDER | COMMENT | null (everything else is silent). */
 export function normalizeEvent(event) {
     if (typeof event !== 'string') return null;
     if (Object.prototype.hasOwnProperty.call(SOUNDS, event)) return event;

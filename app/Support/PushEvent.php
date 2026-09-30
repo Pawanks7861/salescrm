@@ -13,5 +13,7 @@ final class PushEvent
 
     public const FOLLOWUP_REMINDER = 'FOLLOWUP_REMINDER';
 
-    public const ALL = [self::NEW_LEAD_ASSIGNED, self::FOLLOWUP_REMINDER];
+    public const COMMENT = 'COMMENT';
+
+    public const ALL = [self::NEW_LEAD_ASSIGNED, self::FOLLOWUP_REMINDER, self::COMMENT];
 }
