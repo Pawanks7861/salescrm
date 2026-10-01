@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SettingsRequest;
+use App\Jobs\SendFcmNotification;
+use App\Jobs\SendWebPushNotification;
 use App\Models\User;
 use App\Notifications\AdminAlertNotification;
 use App\Notifications\Channels\WebPushChannel;
@@ -71,45 +73,66 @@ class SettingController extends Controller
         return back()->with('success', SettingDefinitions::GROUPS[$group].' settings saved.');
     }
 
-    /** Writes an in-app alert for every active user and pushes it immediately when that user has opted in. */
+    /**
+     * Writes an in-app alert for every active user during this request, and
+     * queues browser/FCM delivery. Push is not sent inline: a slow provider
+     * call was failing the whole page with a 500.
+     */
     public function alertEveryone(Request $request, AuditService $audit, WebPushService $push, FcmService $fcm): RedirectResponse
     {
         $count = 0;
 
-        User::query()->active()->orderBy('id')->each(function (User $user) use ($push, $fcm, &$count) {
-            $notification = new AdminAlertNotification;
-            $user->notify($notification);
-            $count++;
+        try {
+            User::query()->active()->orderBy('id')->each(function (User $user) use ($push, $fcm, &$count) {
+                try {
+                    $notification = new AdminAlertNotification;
+                    $user->notify($notification);
+                    $count++;
 
-            $payload = WebPushChannel::payload(
-                (string) $notification->id,
-                'ADMIN_ALERT',
-                AdminAlertNotification::TITLE,
-                AdminAlertNotification::BODY,
-                route('notifications.open', $notification->id, false),
+                    $payload = WebPushChannel::payload(
+                        (string) $notification->id,
+                        'ADMIN_ALERT',
+                        AdminAlertNotification::TITLE,
+                        AdminAlertNotification::BODY,
+                        '/notifications',
+                    );
+
+                    if ($push->shouldPush($user)) {
+                        SendWebPushNotification::dispatch($user->id, $payload);
+                    }
+                    if ($fcm->shouldSend($user)) {
+                        SendFcmNotification::dispatch($user->id, $payload);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Live alert failed for one user', [
+                        'user_id' => $user->id,
+                        'error' => class_basename($e),
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Live alert failed', ['error' => class_basename($e)]);
+
+            return back()->with('error', 'The alert could not be sent. Please try again.');
+        }
+
+        if ($count === 0) {
+            return back()->with('error', 'No active users could be alerted.');
+        }
+
+        try {
+            $audit->log(
+                AuditAction::NotificationBroadcast,
+                'settings',
+                null,
+                "{$request->user()->name} sent a live alert to {$count} users",
+                null,
+                ['users' => $count],
             );
+        } catch (\Throwable $e) {
+            Log::warning('Live alert audit failed', ['error' => class_basename($e)]);
+        }
 
-            try {
-                if ($push->shouldPush($user)) {
-                    $push->deliver($user, $payload);
-                }
-                if ($fcm->shouldSend($user)) {
-                    $fcm->deliver($user, $payload);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Live alert push failed', ['user_id' => $user->id, 'error' => class_basename($e)]);
-            }
-        });
-
-        $audit->log(
-            AuditAction::NotificationBroadcast,
-            'settings',
-            null,
-            "{$request->user()->name} sent a live alert to {$count} users",
-            null,
-            ['users' => $count],
-        );
-
-        return back()->with('success', "Alert sent to {$count} active users. It is in their notification list now, and on this browser or phone if they turned notifications on.");
+        return back()->with('success', "Alert sent to {$count} active users. It is in their notification list now.");
     }
 }

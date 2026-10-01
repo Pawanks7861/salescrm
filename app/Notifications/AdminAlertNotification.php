@@ -23,7 +23,7 @@ class AdminAlertNotification extends Notification implements BrowserPushable
             'category' => 'system',
             'event' => 'admin_alert',
             'message' => 'Alert from your administrator: this is a live notification check.',
-            'url' => route('notifications.index', [], false),
+            'url' => '/notifications',
         ];
     }
 
