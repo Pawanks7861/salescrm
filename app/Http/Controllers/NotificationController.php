@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
+use App\Models\Conversation;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\Meeting;
+use App\Models\PriorityBroadcastRecipient;
 use App\Models\User;
+use App\Support\Permissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -103,13 +107,26 @@ class NotificationController extends Controller
         $visibleMeetings = $meetingIds->isEmpty() ? collect() : Meeting::query()->visibleTo($user)->whereIn('meetings.id', $meetingIds)->pluck('meetings.id')->flip();
         $visibleLeads = $leadIds->isEmpty() ? collect() : Lead::query()->visibleTo($user)->whereIn('leads.id', $leadIds)->pluck('leads.id')->flip();
 
-        return $notifications->map(function (DatabaseNotification $n) use ($visibleFollowups, $visibleMeetings, $visibleLeads) {
+        $conversationIds = $notifications->map(fn ($n) => $n->data['conversation_id'] ?? null)->filter()->unique()->values();
+        $broadcastIds = $notifications->map(fn ($n) => $n->data['priority_broadcast_id'] ?? null)->filter()->unique()->values();
+        $myConversations = $conversationIds->isEmpty() || ! $user->hasPermission(Permissions::CHAT_USE) ? collect() : Conversation::query()->forUser($user->id)->whereIn('id', $conversationIds)->pluck('id')->flip();
+        $myBroadcasts = $broadcastIds->isEmpty() ? collect() : PriorityBroadcastRecipient::query()->where('user_id', $user->id)->whereIn('broadcast_id', $broadcastIds)->pluck('broadcast_id')->flip();
+        $batchIds = $notifications->map(fn ($n) => $n->data['batch_id'] ?? null)->filter()->unique()->values();
+        $viewableBatches = $batchIds->isEmpty() || ! $user->hasPermission(Permissions::BATCH_VIEW) ? collect() : Batch::query()->whereIn('id', $batchIds)->pluck('id')->flip();
+
+        return $notifications->map(function (DatabaseNotification $n) use ($visibleFollowups, $visibleMeetings, $visibleLeads, $myConversations, $myBroadcasts, $viewableBatches) {
             $data = $n->data;
             $followupId = $data['followup_id'] ?? null;
             $meetingId = $data['meeting_id'] ?? null;
             $leadId = $data['lead_id'] ?? null;
+            $conversationId = $data['conversation_id'] ?? null;
+            $broadcastId = $data['priority_broadcast_id'] ?? null;
+            $batchId = $data['batch_id'] ?? null;
 
             [$stale, $target] = match (true) {
+                (bool) $conversationId => [! $myConversations->has($conversationId), route('chat.show', $conversationId, false)],
+                (bool) $broadcastId => [! $myBroadcasts->has($broadcastId), route('priority-broadcasts.show', $broadcastId, false)],
+                (bool) $batchId => [! $viewableBatches->has($batchId), route('batches.show', $batchId, false)],
                 (bool) $followupId => [! $visibleFollowups->has($followupId), route('followups.show', $followupId, false)],
                 (bool) $meetingId => [! $visibleMeetings->has($meetingId), route('meetings.show', $meetingId, false)],
                 // Legacy call notifications: the calling module was removed, so there is nothing to open.

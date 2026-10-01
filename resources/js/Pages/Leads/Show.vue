@@ -1,4 +1,5 @@
 <script setup>
+import AddToBatchModal from '@/Components/batches/AddToBatchModal.vue';
 import FollowupActionModals from '@/Components/followups/FollowupActionModals.vue';
 import FollowupCards from '@/Components/followups/FollowupCards.vue';
 import FollowupFormModal from '@/Components/followups/FollowupFormModal.vue';
@@ -37,6 +38,7 @@ const props = defineProps({
     followupForm: { type: Object, default: null },
     meetings: { type: Array, default: () => [] },
     meetingForm: { type: Object, default: null },
+    batches: { type: Array, default: null },
     counts: Object,
     options: Object,
     can: Object,
@@ -108,6 +110,17 @@ const archive = async () => {
     }
 };
 const restore = () => router.post(route('leads.restore', props.lead.id));
+
+const addingToBatch = ref(false);
+const removeFromBatch = async (batch) => {
+    const ok = await confirm({
+        title: `Remove this Lead from "${batch.name}"?`,
+        message: 'The Lead itself will not be deleted, and its owner, status, follow-ups and meetings stay as they are.',
+        confirmText: 'Remove from batch',
+        danger: true,
+    });
+    if (ok) router.delete(route('batches.leads.destroy', [batch.id, props.lead.id]), { preserveScroll: true });
+};
 
 const filledCustomFields = computed(() => props.customFields.filter((f) => f.display !== null && f.display !== ''));
 
@@ -344,6 +357,24 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
                     </dl>
                 </div>
 
+                <div v-if="batches" class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">Batches</h2>
+                        <button v-if="can.manageBatches" type="button" class="inline-flex items-center gap-1 text-2xs text-brand-600 hover:underline" @click="addingToBatch = true">
+                            <AppIcon name="plus" class="h-3 w-3" /> Add to batch
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 p-4">
+                        <p v-if="!batches.length" class="text-xs text-slate-500">Not in any batch.</p>
+                        <span v-for="b in batches" :key="b.id" class="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-700" :class="{ 'opacity-60': b.archived }">
+                            <Link :href="route('batches.show', b.id)" class="truncate hover:text-brand-700" :title="`${b.batch_number}${b.archived ? ' · archived' : ''}`">{{ b.name }}</Link>
+                            <button v-if="can.manageBatches" type="button" class="shrink-0 text-slate-400 hover:text-red-600" :aria-label="`Remove from ${b.name}`" :title="`Remove from ${b.name}`" @click="removeFromBatch(b)">
+                                <AppIcon name="close" class="h-3 w-3" />
+                            </button>
+                        </span>
+                    </div>
+                </div>
+
                 <div v-if="facebook" class="panel">
                     <div class="panel-header">
                         <h2 class="panel-title">Integration · {{ facebook.platform }} Lead Ads</h2>
@@ -379,6 +410,15 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
         </div>
 
         <StatusChangeModal :show="lostModal.show" :lead-id="lead.id" :status="lostModal.status" :lost-reasons="options.lostReasons" @close="lostModal.show = false" />
+        <AddToBatchModal
+            v-if="can.manageBatches"
+            :show="addingToBatch"
+            :lead-ids="[lead.id]"
+            :can-create="can.createBatch"
+            :can-assign-trainers="can.manageBatchTrainers"
+            :exclude-batch-ids="(batches ?? []).map((b) => b.id)"
+            @close="addingToBatch = false"
+        />
         <AssignModal v-if="can.assign" :show="showAssign" :lead="lead" :users="options.assignees" @close="showAssign = false" />
         <template v-if="followupForm">
             <FollowupActionModals v-model:action="followupAction" :options="followupActionOptions" />

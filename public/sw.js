@@ -98,6 +98,8 @@ self.addEventListener('push', (event) => {
                 renotify: false,
                 timestamp: data.ts || Date.now(),
                 silent: played,
+                // Urgent team messages stay on screen until the user acts on them.
+                requireInteraction: data.event === 'PRIORITY_BROADCAST',
                 data: { id: data.id, event: data.event || null, url: target ? target.pathname + target.search : '/notifications' },
             });
         })(),

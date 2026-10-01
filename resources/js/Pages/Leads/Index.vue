@@ -1,4 +1,5 @@
 <script setup>
+import AddToBatchModal from '@/Components/batches/AddToBatchModal.vue';
 import PriorityBadge from '@/Components/leads/PriorityBadge.vue';
 import AppIcon from '@/Components/ui/AppIcon.vue';
 import Avatar from '@/Components/ui/Avatar.vue';
@@ -11,9 +12,10 @@ import UiButton from '@/Components/ui/UiButton.vue';
 import UiPagination from '@/Components/ui/UiPagination.vue';
 import { useFilters } from '@/Composables/useFilters';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { batchTags } from '@/utils/batches';
 import { formatCurrency, formatDate, formatDateTime, timeAgo } from '@/utils/format';
 import { Link } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     leads: Object,
@@ -24,7 +26,7 @@ const props = defineProps({
 
 const showValue = computed(() => props.leads.data.some((l) => 'estimated_value' in l));
 
-const keys = ['search', 'status', 'source', 'campaign', 'facebook_page', 'facebook_form', 'assignee', 'priority', 'city', 'state', 'on', 'created_from', 'created_to', 'age', 'duplicates', 'archived', 'sort', 'direction', 'per_page'];
+const keys = ['search', 'status', 'source', 'campaign', 'facebook_page', 'facebook_form', 'assignee', 'priority', 'city', 'state', 'on', 'created_from', 'created_to', 'age', 'duplicates', 'archived', 'batch', 'sort', 'direction', 'per_page'];
 const { filters, reset } = useFilters(Object.fromEntries(keys.map((k) => [k, props.filters[k] ?? ''])), route('leads.index'));
 
 const advancedKeys = ['campaign', 'facebook_page', 'facebook_form', 'city', 'state', 'created_from', 'created_to', 'duplicates', 'archived'];
@@ -45,11 +47,22 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
 const pickDay = (day) => {
     filters.on = filters.on === day ? '' : day;
 };
-const colSpan = computed(() => (showValue.value ? 10 : 9));
+const colSpan = computed(() => 9 + (showValue.value ? 1 : 0) + (props.can.viewBatches ? 1 : 0) + (props.can.addToBatch ? 1 : 0));
+
+const selected = ref([]);
+watch(
+    () => props.leads,
+    () => (selected.value = []),
+);
+const selectableIds = computed(() => props.leads.data.filter((l) => !l.archived).map((l) => l.id));
+const allSelected = computed(() => selectableIds.value.length > 0 && selectableIds.value.every((id) => selected.value.includes(id)));
+const toggleAll = () => (selected.value = allSelected.value ? [] : [...selectableIds.value]);
+const addingToBatch = ref(false);
 const groupedRows = computed(() => {
     const rows = props.leads.data;
     const byDate = !filters.sort || filters.sort === 'created_at';
-    if (!byDate) return rows.map((lead) => ({ type: 'lead', lead }));
+    const leadRow = (lead) => ({ type: 'lead', lead, batches: batchTags(lead.batches) });
+    if (!byDate) return rows.map(leadRow);
 
     const out = [];
     let last = '';
@@ -59,7 +72,7 @@ const groupedRows = computed(() => {
             out.push({ type: 'date', label });
             last = label;
         }
-        out.push({ type: 'lead', lead });
+        out.push(leadRow(lead));
     }
     return out;
 });
@@ -90,6 +103,10 @@ const groupedRows = computed(() => {
                         <option value="">Any owner</option>
                         <option value="unassigned">Unassigned</option>
                         <option v-for="u in options.users" :key="u.id" :value="u.id">{{ u.name }}</option>
+                    </select>
+                    <select v-if="can.viewBatches && options.batches?.length" v-model="filters.batch" class="form-input w-40" aria-label="Batch">
+                        <option value="">Any batch</option>
+                        <option v-for="b in options.batches" :key="b.id" :value="b.id">{{ b.name }}{{ b.archived ? ' (archived)' : '' }}</option>
                     </select>
                     <select v-model="filters.priority" class="form-input w-28">
                         <option value="">Any priority</option>
@@ -138,10 +155,19 @@ const groupedRows = computed(() => {
                 </div>
             </FilterBar>
 
+            <div v-if="can.addToBatch && selected.length" class="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-brand-50/60 px-5 py-2.5 text-xs">
+                <span class="font-semibold text-slate-800">{{ selected.length }} selected</span>
+                <UiButton size="sm" icon="stack" @click="addingToBatch = true">Add to Batch</UiButton>
+                <button type="button" class="text-slate-500 hover:text-slate-800" @click="selected = []">Clear</button>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th v-if="can.addToBatch" class="w-8">
+                                <input type="checkbox" class="rounded border-slate-300 text-brand-600" :checked="allSelected" :disabled="!selectableIds.length" aria-label="Select all leads on this page" @change="toggleAll" />
+                            </th>
                             <th>
                                 <button type="button" class="uppercase tracking-[0.08em] hover:text-slate-700" @click="sortBy('full_name')">Lead {{ sortIcon('full_name') }}</button>
                                 <span class="mx-1 text-slate-300">/</span>
@@ -152,6 +178,7 @@ const groupedRows = computed(() => {
                             <th class="cursor-pointer select-none" @click="sortBy('priority')">Priority {{ sortIcon('priority') }}</th>
                             <th>Source</th>
                             <th>Owner</th>
+                            <th v-if="can.viewBatches">Batches</th>
                             <th>City</th>
                             <th v-if="showValue" class="text-right">Value</th>
                             <th class="cursor-pointer select-none" @click="sortBy('created_at')">Date {{ sortIcon('created_at') }}</th>
@@ -164,6 +191,9 @@ const groupedRows = computed(() => {
                             <td :colspan="colSpan" class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ row.label }}</td>
                         </tr>
                         <tr v-else :class="{ 'opacity-60': row.lead.archived }">
+                            <td v-if="can.addToBatch">
+                                <input v-if="!row.lead.archived" v-model="selected" type="checkbox" :value="row.lead.id" class="rounded border-slate-300 text-brand-600" :aria-label="`Select ${row.lead.lead_number}`" />
+                            </td>
                             <td>
                                 <div class="flex items-center gap-3">
                                     <Avatar :name="row.lead.full_name" size="md" />
@@ -197,6 +227,13 @@ const groupedRows = computed(() => {
                                 </div>
                                 <UiBadge v-else color="amber">Unassigned</UiBadge>
                             </td>
+                            <td v-if="can.viewBatches" class="text-xs">
+                                <span v-if="row.batches.shown.length" class="inline-flex max-w-[160px] items-center gap-1">
+                                    <span v-for="b in row.batches.shown" :key="b.id" class="truncate rounded bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-700" :title="b.name">{{ b.name }}</span>
+                                    <span v-if="row.batches.more" class="shrink-0 cursor-help rounded bg-slate-100 px-1.5 py-0.5 text-2xs font-semibold text-slate-600" :title="row.batches.title">+{{ row.batches.more }}</span>
+                                </span>
+                                <span v-else class="text-slate-400">—</span>
+                            </td>
                             <td class="text-xs">{{ row.lead.city ?? '—' }}</td>
                             <td v-if="showValue" class="whitespace-nowrap text-right text-xs">{{ formatCurrency(row.lead.estimated_value) }}</td>
                             <td class="whitespace-nowrap text-xs" :title="formatDateTime(row.lead.created_at)">
@@ -212,5 +249,7 @@ const groupedRows = computed(() => {
             </div>
             <UiPagination :paginator="leads" />
         </div>
+
+        <AddToBatchModal v-if="can.addToBatch" :show="addingToBatch" :lead-ids="selected" :can-create="can.createBatch" :can-assign-trainers="can.manageBatchTrainers" @close="addingToBatch = false" @added="selected = []" />
     </AppLayout>
 </template>

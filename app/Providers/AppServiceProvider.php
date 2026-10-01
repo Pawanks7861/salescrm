@@ -73,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('crm', fn (Request $request) => Limit::perMinute(300)->by($request->user()?->id ?: $request->ip()));
         RateLimiter::for('sensitive', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
         RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('chat', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
         // Meta batches deliveries; this only caps abusive floods per source IP.
         RateLimiter::for('meta-webhook', fn (Request $request) => Limit::perMinute(1200)->by($request->ip()));
         // Uptime monitors poll every 30–60 s.

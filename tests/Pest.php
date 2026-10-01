@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FacebookIntegrationStatus;
+use App\Models\Conversation;
 use App\Models\FacebookForm;
 use App\Models\FacebookIntegration;
 use App\Models\FacebookPage;
@@ -13,10 +14,13 @@ use App\Models\LeadStatusChange;
 use App\Models\LostReason;
 use App\Models\Meeting;
 use App\Models\MeetingType;
+use App\Models\Message;
 use App\Models\Permission;
 use App\Models\PushSubscription;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Chat\ConversationService;
+use App\Services\Chat\MessageService;
 use App\Services\Followups\FollowupService;
 use App\Services\Leads\LeadService;
 use App\Services\Meetings\MeetingService;
@@ -485,4 +489,16 @@ function scheduleFollowup(Lead $lead, User $actor, array $overrides = []): Follo
     } finally {
         $previous ? Auth::setUser($previous) : Auth::forgetUser();
     }
+}
+
+/** The direct conversation between two users, created through the service. */
+function chatBetween(User $a, User $b): Conversation
+{
+    return app(ConversationService::class)->findOrCreateDirect($a, $b);
+}
+
+/** Sends a chat message through the service (no HTTP). */
+function chatSend(Conversation $conversation, User $sender, ?string $body = 'Hello', array $files = [], ?int $replyTo = null): Message
+{
+    return app(MessageService::class)->send($conversation, $sender, $body, $replyTo, $files);
 }

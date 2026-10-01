@@ -11,6 +11,9 @@ export const EVENTS = Object.freeze({
     FOLLOWUP_REMINDER: 'FOLLOWUP_REMINDER',
     COMMENT: 'COMMENT',
     ADMIN_ALERT: 'ADMIN_ALERT',
+    CHAT_MESSAGE: 'CHAT_MESSAGE',
+    PRIORITY_BROADCAST: 'PRIORITY_BROADCAST',
+    BATCH_ASSIGNED: 'BATCH_ASSIGNED',
 });
 
 /** In-app (database) event names mapped to the push event they represent. */
@@ -21,6 +24,9 @@ const ALIASES = Object.freeze({
     lead_note: EVENTS.COMMENT,
     meeting_note: EVENTS.COMMENT,
     admin_alert: EVENTS.ADMIN_ALERT,
+    chat_message: EVENTS.CHAT_MESSAGE,
+    priority_broadcast: EVENTS.PRIORITY_BROADCAST,
+    batch_trainer_assigned: EVENTS.BATCH_ASSIGNED,
 });
 
 const SOUNDS = Object.freeze({
@@ -28,6 +34,9 @@ const SOUNDS = Object.freeze({
     [EVENTS.FOLLOWUP_REMINDER]: 'reminder',
     [EVENTS.COMMENT]: 'lead',
     [EVENTS.ADMIN_ALERT]: 'lead',
+    [EVENTS.CHAT_MESSAGE]: 'chat',
+    [EVENTS.PRIORITY_BROADCAST]: 'priority',
+    [EVENTS.BATCH_ASSIGNED]: 'lead',
 });
 
 /** NEW_LEAD_ASSIGNED | FOLLOWUP_REMINDER | COMMENT | null (everything else is silent). */

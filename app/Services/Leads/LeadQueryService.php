@@ -53,7 +53,10 @@ class LeadQueryService
             ->when(empty($filters['on']) ? ($filters['created_from'] ?? null) : null, fn (Builder $q, $v) => $q->where('created_at', '>=', $this->date($v, false)))
             ->when(empty($filters['on']) ? ($filters['created_to'] ?? null) : null, fn (Builder $q, $v) => $q->where('created_at', '<=', $this->date($v, true)))
             ->when($filters['on'] ?? null, fn (Builder $q, $v) => $q->whereBetween('created_at', [$this->date($v, false), $this->date($v, true)]))
-            ->when(! empty($filters['duplicates']), fn (Builder $q) => $q->where('is_duplicate', true));
+            ->when(! empty($filters['duplicates']), fn (Builder $q) => $q->where('is_duplicate', true))
+            ->when($filters['batch'] ?? null, fn (Builder $q, $v) => $this->inBatch($q, (int) $v));
+
+        $this->nextFollowup($query, (string) ($filters['followup'] ?? ''));
 
         $assignee = $filters['assignee'] ?? null;
         if ($assignee === 'unassigned' || ! empty($filters['unassigned'])) {
@@ -127,6 +130,26 @@ class LeadQueryService
             ->orWhere('email', 'like', $this->escape(strtolower($term)).'%')
             ->orWhere('company_name', 'like', $like)
             ->orWhere('lead_number', 'like', $this->escape(strtoupper($term)).'%'));
+    }
+
+    /** Batch membership only narrows a query that is already visibility-scoped. */
+    public function inBatch(Builder $query, int $batchId): Builder
+    {
+        return $query->whereExists(fn ($sub) => $sub->from('batch_leads')
+            ->whereColumn('batch_leads.lead_id', 'leads.id')
+            ->where('batch_leads.batch_id', $batchId));
+    }
+
+    /** Filters on the synced leads.next_followup_at column (overdue | today | upcoming | none). */
+    private function nextFollowup(Builder $query, string $value): void
+    {
+        match ($value) {
+            'overdue' => $query->where('next_followup_at', '<', now()),
+            'today' => $query->whereBetween('next_followup_at', [CrmTime::startOfToday(), CrmTime::endOfToday()]),
+            'upcoming' => $query->where('next_followup_at', '>=', now()),
+            'none' => $query->whereNull('next_followup_at'),
+            default => null,
+        };
     }
 
     private function escape(string $value): string

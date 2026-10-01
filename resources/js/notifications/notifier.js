@@ -35,11 +35,26 @@ const pushActive = () => {
     return Boolean(p.available && p.browser && typeof Notification !== 'undefined' && Notification.permission === 'granted');
 };
 
+/** Applies an authoritative unread count returned by an action that marked notifications read. */
+export function setLiveUnread(count) {
+    if (Number.isInteger(count) && count >= 0) liveUnread.value = count;
+}
+
 const bumpUnread = () => {
     liveUnread.value = (liveUnread.value ?? getProps().notifications?.unread ?? 0) + 1;
 };
 
+/** Lets open pages (chat, priority banner) refresh as soon as a related notification arrives. */
+const emitArrival = (event) => {
+    try {
+        window.dispatchEvent(new CustomEvent('crm:notification', { detail: { event } }));
+    } catch {
+        /* non-browser environment */
+    }
+};
+
 async function claimAndAnnounce(item) {
+    emitArrival(item.event);
     const result = await announce(item);
     if (!result.duplicate) channel?.postMessage({ type: 'claimed', id: item.id });
     return result;
@@ -87,6 +102,7 @@ async function onWorkerMessage(e) {
         if (!known) bumpUnread();
 
         if (msg.mode === 'passive') {
+            emitArrival(p.event);
             deduper.seed([p.id]);
             reply({ handled: false, played: false });
             return;

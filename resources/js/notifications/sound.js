@@ -8,7 +8,7 @@
  * uses the system's default notification sound.
  */
 
-export const SOUND_TYPES = Object.freeze({ lead: 'lead', reminder: 'reminder' });
+export const SOUND_TYPES = Object.freeze({ lead: 'lead', reminder: 'reminder', chat: 'chat', priority: 'priority' });
 
 // Each chime stays under one second.
 export const CHIMES = Object.freeze({
@@ -29,6 +29,26 @@ export const CHIMES = Object.freeze({
             { freq: 440.0, at: 0, dur: 0.2 },
             { freq: 440.0, at: 0.32, dur: 0.12 },
             { freq: 440.0, at: 0.47, dur: 0.18 },
+        ],
+    },
+    // Chat message: quiet, quick "pop-pop" (G5 → C6), lighter than the lead chime.
+    chat: {
+        wave: 'sine',
+        gain: 0.09,
+        notes: [
+            { freq: 783.99, at: 0, dur: 0.12 },
+            { freq: 1046.5, at: 0.1, dur: 0.22 },
+        ],
+    },
+    // Priority broadcast: insistent descending-then-rising three-tone alert, played once.
+    priority: {
+        wave: 'square',
+        gain: 0.07,
+        notes: [
+            { freq: 987.77, at: 0, dur: 0.18 },
+            { freq: 739.99, at: 0.22, dur: 0.18 },
+            { freq: 987.77, at: 0.44, dur: 0.18 },
+            { freq: 1318.51, at: 0.66, dur: 0.28 },
         ],
     },
 });
@@ -132,7 +152,7 @@ export const playFollowupReminderSound = () => play(SOUND_TYPES.reminder);
 /** For preference buttons: unlocks audio (user gesture) then plays. */
 export async function playTestSound(type) {
     if (!(await ensureAudio())) return false;
-    return playChime(type === SOUND_TYPES.reminder ? SOUND_TYPES.reminder : SOUND_TYPES.lead);
+    return playChime(Object.prototype.hasOwnProperty.call(CHIMES, type) ? type : SOUND_TYPES.lead);
 }
 
 export const NotificationSoundService = Object.freeze({

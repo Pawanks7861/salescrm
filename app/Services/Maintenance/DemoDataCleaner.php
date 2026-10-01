@@ -30,7 +30,7 @@ class DemoDataCleaner
         'meeting_reminders', 'meeting_participants', 'meetings',
         'followup_reminders', 'followups',
         'lead_note_histories', 'lead_notes', 'lead_custom_field_values', 'lead_status_changes', 'lead_assignments',
-        'lead_enquiries', 'attachments', 'activities', 'leads',
+        'lead_enquiries', 'attachments', 'activities', 'batch_trainers', 'batch_leads', 'batches', 'leads',
         'lead_assignment_rules', 'campaigns',
         'notifications', 'push_subscriptions', 'report_exports',
         'login_histories', 'sessions', 'password_reset_tokens', 'audit_logs',

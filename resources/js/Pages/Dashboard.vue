@@ -1,5 +1,7 @@
 <script setup>
+import PriorityMessageModal from '@/Components/chat/PriorityMessageModal.vue';
 import FollowupActionModals from '@/Components/followups/FollowupActionModals.vue';
+import { usePermissions } from '@/Composables/usePermissions';
 import FollowupCards from '@/Components/followups/FollowupCards.vue';
 import MeetingActionModals from '@/Components/meetings/MeetingActionModals.vue';
 import MeetingCards from '@/Components/meetings/MeetingCards.vue';
@@ -27,6 +29,8 @@ const props = defineProps({
 
 const action = ref(null);
 const meetingAction = ref(null);
+const showPriority = ref(false);
+const { can } = usePermissions();
 
 const salesCards = computed(() => {
     const s = props.sales;
@@ -61,7 +65,13 @@ const greeting = computed(() => {
 
 <template>
     <AppLayout title="Dashboard">
-        <PageHeader :title="`${greeting}, ${firstName}`" subtitle="Here is what is happening in your CRM today." />
+        <PageHeader :title="`${greeting}, ${firstName}`" subtitle="Here is what is happening in your CRM today.">
+            <template v-if="can('priority_broadcast.send', 'priority_broadcast.view_history')" #actions>
+                <UiButton v-if="can('priority_broadcast.view_history')" variant="secondary" size="sm" icon="clock" :href="route('priority-broadcasts.index')">Priority history</UiButton>
+                <UiButton v-if="can('priority_broadcast.send')" variant="danger" size="sm" icon="warning" data-testid="send-priority" @click="showPriority = true">Send Priority Message</UiButton>
+            </template>
+        </PageHeader>
+        <PriorityMessageModal v-if="can('priority_broadcast.send')" :show="showPriority" @close="showPriority = false" />
 
         <div v-if="lastLogin" class="mb-5 inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-3 py-2 text-xs text-slate-500">
             <AppIcon name="key" class="h-4 w-4 shrink-0 text-slate-400" />

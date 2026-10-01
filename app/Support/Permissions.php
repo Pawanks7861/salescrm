@@ -40,6 +40,18 @@ final class Permissions
 
     public const LEAD_ASSIGNMENT_RULES = 'lead.assignment_rules';
 
+    public const BATCH_VIEW = 'batch.view';
+
+    public const BATCH_CREATE = 'batch.create';
+
+    public const BATCH_EDIT = 'batch.edit';
+
+    public const BATCH_DELETE = 'batch.delete';
+
+    public const BATCH_MANAGE_LEADS = 'batch.manage_leads';
+
+    public const BATCH_MANAGE_TRAINERS = 'batch.manage_trainers';
+
     public const FOLLOWUP_VIEW = 'followup.view';
 
     public const FOLLOWUP_VIEW_TEAM = 'followup.view_team';
@@ -140,6 +152,12 @@ final class Permissions
 
     public const FILE_DOWNLOAD = 'file.download';
 
+    public const CHAT_USE = 'chat.use';
+
+    public const PRIORITY_BROADCAST_SEND = 'priority_broadcast.send';
+
+    public const PRIORITY_BROADCAST_VIEW_HISTORY = 'priority_broadcast.view_history';
+
     /**
      * Legacy team-level permissions. Data visibility is OWN or ALL only, so
      * these are not in the catalogue, are never seeded, and are stripped from
@@ -175,6 +193,13 @@ final class Permissions
             self::LEAD_EDIT_SOURCE => ['module' => 'Leads', 'label' => 'Change lead source & campaign'],
             self::LEAD_CONFIGURE => ['module' => 'Leads', 'label' => 'Configure statuses, sources, campaigns, lost reasons & custom fields'],
             self::LEAD_ASSIGNMENT_RULES => ['module' => 'Leads', 'label' => 'Manage lead assignment rules'],
+
+            self::BATCH_VIEW => ['module' => 'Batches', 'label' => 'View batches (only leads the user can already see)'],
+            self::BATCH_CREATE => ['module' => 'Batches', 'label' => 'Create batches'],
+            self::BATCH_EDIT => ['module' => 'Batches', 'label' => 'Edit batch details'],
+            self::BATCH_DELETE => ['module' => 'Batches', 'label' => 'Archive / delete batches'],
+            self::BATCH_MANAGE_LEADS => ['module' => 'Batches', 'label' => 'Add / remove leads in batches'],
+            self::BATCH_MANAGE_TRAINERS => ['module' => 'Batches', 'label' => 'Assign / remove trainers on batches'],
 
             self::FOLLOWUP_VIEW => ['module' => 'Follow-ups', 'label' => 'View own follow-ups'],
             self::FOLLOWUP_CREATE => ['module' => 'Follow-ups', 'label' => 'Create follow-ups'],
@@ -230,6 +255,10 @@ final class Permissions
             self::FILE_VIEW => ['module' => 'Files', 'label' => 'View attachments'],
             self::FILE_UPLOAD => ['module' => 'Files', 'label' => 'Upload attachments'],
             self::FILE_DOWNLOAD => ['module' => 'Files', 'label' => 'Download attachments'],
+
+            self::CHAT_USE => ['module' => 'Chat', 'label' => 'Use internal one-to-one chat'],
+            self::PRIORITY_BROADCAST_SEND => ['module' => 'Chat', 'label' => 'Send priority team messages'],
+            self::PRIORITY_BROADCAST_VIEW_HISTORY => ['module' => 'Chat', 'label' => 'View priority message history'],
         ];
     }
 
