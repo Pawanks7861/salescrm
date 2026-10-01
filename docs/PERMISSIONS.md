@@ -29,15 +29,15 @@ There are exactly **two** tiers. There is no team tier and no team fallback.
 | All | `lead.view_all` | no restriction |
 | None | — | `1 = 0` |
 
-The highest tier held wins. Leads implement this in one class, `App\Services\Leads\LeadVisibility`: `apply()` (SQL) and `canView()` (PHP) mirror each other and are used by the list, search, pipeline, duplicate warnings, `LeadPolicy` and every nested lead route (notes, attachments, assignment, status, follow-ups, meetings, calls). An **unassigned** lead is visible only to `lead.view_all` holders (Admin / Super Admin by default). Team membership, `team_id` columns and `manager_id` never grant access.
+The highest tier held wins. Leads implement this in one class, `App\Services\Leads\LeadVisibility`: `apply()` (SQL) and `canView()` (PHP) mirror each other and are used by the list, search, pipeline, duplicate warnings, `LeadPolicy` and every nested lead route (notes, attachments, assignment, status, follow-ups, meetings). An **unassigned** lead is visible only to `lead.view_all` holders (Admin / Super Admin by default). Team membership, `team_id` columns and `manager_id` never grant access.
 
-Access follows the current owner. When a lead is reassigned, the previous owner loses access to the lead and its notes, attachments, enquiries, follow-ups, meetings and calls on the next request. An open lead page then shows "You no longer have access to this lead" (`Error.vue`, context `lead`).
+Access follows the current owner. When a lead is reassigned, the previous owner loses access to the lead and its notes, attachments, enquiries, follow-ups and meetings on the next request. An open lead page then shows "You no longer have access to this lead" (`Error.vue`, context `lead`).
 
 Assignment (`LeadVisibility::assignableUserIds()`): holders of `lead.assign` / `lead.reassign` may hand a lead **they can see** to any active user. If they are not the new owner and don't hold `lead.view_all`, they lose access. Everyone else may only take ownership themselves. A crafted `assigned_to` / `to_user_id` outside that set is rejected with a validation error, never silently applied.
 
 ### Deprecated team permissions
 
-`lead.view_team`, `followup.view_team`, `meeting.view_team`, `call.view_team`, `report.view_team`, `team.view` and `team.manage` are listed in `App\Support\Permissions::DEPRECATED`:
+`lead.view_team`, `followup.view_team`, `meeting.view_team`, `report.view_team`, `team.view` and `team.manage` are listed in `App\Support\Permissions::DEPRECATED` (`call.view_team` was deleted together with the other call permissions when telephony was removed):
 
 - They are **not** in the catalogue, are never seeded, and don't appear on the Roles screen.
 - `PermissionRegistrar` strips them from every resolved permission set, so an old role or user-override row granting them has **no effect** (`hasPermission()` returns `false`).
@@ -81,13 +81,13 @@ It **always AND-s lead visibility** for meetings linked to a lead. Being invited
 
 For a lead meeting, both the host and the invitees must be able to see the lead. Conflict messages only describe a clashing meeting the actor can view; otherwise the person is "unavailable during the selected time". See [MEETING_MODULE.md](MEETING_MODULE.md).
 
-### Calls
+### Calls (removed)
 
-`App\Services\Telephony\CallVisibility` uses the same two tiers — `call.view` (I was the agent, or the call is on a lead I own) and `call.view_all` — and **always AND-s lead visibility** for calls linked to a lead (archived leads hide their calls below `view_all`). Having made a call never grants access to a lead that has since been reassigned; the historical `agent_user_id` is kept but the call becomes invisible to the former agent. Calls without a lead (unknown callers, manual dials) follow the call tier only. Recordings additionally require `call.recording.listen` / `call.recording.download`; a guessed URL returns 403. The incoming screen-pop only reveals leads the receiving user can see ("Lead information unavailable." otherwise). Outbound calls use a lead contact field resolved on the server; a raw number needs `call.manual_dial`. See [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The telephony module and all twelve `call.*` permissions were removed. Migration `2026_10_01_100000_remove_telephony_module` deletes the permission rows together with every role grant and user override that referenced them, and bumps the permission cache version so no session keeps a stale grant. The Roles screen no longer shows a Calls group. Historical audit rows about calls remain readable to `audit.view` holders.
 
 ### Reports
 
-`App\Services\Reports\ReportScope` uses the same two tiers: `report.view` (own records) and `report.view_all` (company, including unassigned leads). It **ANDs** the module visibility services (`LeadVisibility`, `CallVisibility`, `FollowupVisibility`, `MeetingVisibility`) with a report-tier cap on the owner columns, so `lead.view_all` alone never widens a report beyond OWN. Only `report.view_all` users get the salesperson filter. Filter options (people, cities, states) come from the same scope. Out-of-scope user ids and any `team` parameter in a request are ignored. There is no team report or team filter (`/reports/teams` returns 404). `report.export` is required for CSV exports; without it the backend returns 403 and audits `EXPORT_ATTEMPTED`. Downloads are owner-only. See [REPORTING_MODULE.md](REPORTING_MODULE.md).
+`App\Services\Reports\ReportScope` uses the same two tiers: `report.view` (own records) and `report.view_all` (company, including unassigned leads). It **ANDs** the module visibility services (`LeadVisibility`, `FollowupVisibility`, `MeetingVisibility`) with a report-tier cap on the owner columns, so `lead.view_all` alone never widens a report beyond OWN. Only `report.view_all` users get the salesperson filter. Filter options (people, cities, states) come from the same scope. Out-of-scope user ids and any `team` parameter in a request are ignored. There is no team report or team filter (`/reports/teams` returns 404). `report.export` is required for CSV exports; without it the backend returns 403 and audits `EXPORT_ATTEMPTED`. Downloads are owner-only. See [REPORTING_MODULE.md](REPORTING_MODULE.md).
 
 Lead estimated value is hidden from every role while `crm.features.lead_value` is off (Phase 7.1). This is a feature flag, not a permission, so no role (including Super Admin) sees value KPIs, columns or export fields until it's turned back on.
 
@@ -138,17 +138,6 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 | | `meeting.override_conflict` | Schedule despite a calendar conflict (confirmed, audited) |
 | | `meeting.schedule_past` | Schedule meetings in the past |
 | | `meeting.configure` | Manage meeting types and meeting settings |
-| Calls | `call.view` | View calls I handled or on leads I own |
-| | `call.view_all` | View every call (still limited to visible leads) |
-| | `call.make` | Place outbound calls (click-to-call / browser) |
-| | `call.receive` | Receive incoming calls in the softphone (screen-pop) |
-| | `call.manual_dial` | Dial a number that is not a lead contact field |
-| | `call.add_disposition` | Save a call outcome (disposition, next action) |
-| | `call.edit_notes` | Edit call notes |
-| | `call.recording.listen` | Play recordings of visible calls (audited) |
-| | `call.recording.download` | Download a single recording (audited, throttled) |
-| | `call.configure` | Admin → Telephony: integration, numbers, calling accounts, dispositions, settings |
-| | `call.monitor` | View provider callback events on the call page |
 | Notes | `note.edit_any`, `note.delete`, `note.view_management`, `note.view_private` | Edit others' notes, delete notes, read "management" notes, read other users' private notes |
 | Users | `user.view`, `user.create`, `user.edit`, `user.disable`, `user.delete`, `user.reset_password` | |
 | Roles | `role.view`, `role.manage` | View roles / edit role permissions and user overrides |
@@ -156,7 +145,6 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 | Audit | `audit.view`, `login_history.view` | |
 | Settings | `settings.view`, `settings.manage` | `settings.manage` also covers company logo / favicon upload and removal (`admin.branding.*`) and the global browser-notification and sound switches |
 | Integrations | `facebook.manage` | Connect/disconnect Meta, choose Pages, manage forms and field mapping, view and retry webhook events, backfill leads, Meta settings. Super Admin only by default |
-| | `call.configure` | Telephony integration (see Calls) |
 | Files | `file.view`, `file.upload`, `file.download` | |
 
 ## Default roles
@@ -165,8 +153,8 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 |------|------|-------|
 | Super Admin | `super_admin` | System role, all access, cannot be edited or deleted |
 | Admin | `admin` | Broad operational access; **no** `role.manage`, `facebook.manage`, `lead.restore`, `user.delete` by default |
-| Sales Manager | `sales_manager` | **Own records only** (no `*.view_all`, no team visibility). It keeps explicit extras: `lead.assign` / `lead.reassign` / `lead.edit_source`, `followup.assign` / `followup.delete`, `meeting.assign` / `meeting.override_conflict` / `meeting.create_without_lead`, `note.edit_any` / `note.delete` / `note.view_management`, `user.view`, `file.download`, `call.recording.listen`. These all apply only to records the manager can see. Grant a `*.view_all` permission on the Roles screen if a manager should see everything |
-| Sales Executive | `sales_executive` | Own records and own-data reports only; no export, import, bulk, delete, reassign, recording listen/download, file download, audit, settings |
+| Sales Manager | `sales_manager` | **Own records only** (no `*.view_all`, no team visibility). It keeps explicit extras: `lead.assign` / `lead.reassign` / `lead.edit_source`, `followup.assign` / `followup.delete`, `meeting.assign` / `meeting.override_conflict` / `meeting.create_without_lead`, `note.edit_any` / `note.delete` / `note.view_management`, `user.view`, `file.download`. These all apply only to records the manager can see. Grant a `*.view_all` permission on the Roles screen if a manager should see everything |
+| Sales Executive | `sales_executive` | Own records and own-data reports only; no export, import, bulk, delete, reassign, file download, audit, settings |
 
 ### Access matrix (Own / All)
 
@@ -174,14 +162,13 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 |------------|-------------|-------|-------------------------|-----------------|
 | Leads, notes, attachments, enquiries | All | All | Own | Own |
 | Unassigned leads | ✔ | ✔ | ✖ | ✖ |
-| Follow-ups / meetings / calls | All | All | Own (+ on own leads) | Own (+ on own leads) |
+| Follow-ups / meetings | All | All | Own (+ on own leads) | Own (+ on own leads) |
 | Reports / dashboard | Company (incl. Unassigned) | Company (incl. Unassigned) | Own ("My") | Own ("My") |
 | Salesperson report filter | ✔ | ✔ | ✖ | ✖ |
 | Assign / reassign a visible lead | ✔ | ✔ | ✔ (own leads) | ✖ |
-| Recording listen | ✔ | ✔ | ✔ (visible calls) | ✖ |
-| Recording download / report export | ✔ | export only | ✖ | ✖ |
+| Report export | ✔ | ✔ | ✖ | ✖ |
 
-"Own" means `leads.assigned_to = me`. For follow-ups, meetings and calls it also covers records assigned to, hosted by or handled by me, and every one of them requires the parent lead to be visible.
+"Own" means `leads.assigned_to = me`. For follow-ups and meetings it also covers records assigned to or hosted by me, and every one of them requires the parent lead to be visible.
 
 Permissions added by a later release are granted to **existing** system roles only if they are in that role's defaults (`RoleSeeder` uses `syncWithoutDetaching` on newly created permissions), so admin customisations are never overwritten. Phase 2 therefore gave Admin `lead.edit_source`, `lead.configure`, `lead.assignment_rules`, `note.view_private`, and Sales Manager `lead.edit_source`.
 
@@ -197,16 +184,7 @@ Phase 5 added **no new permission**; it uses the existing `facebook.manage`, whi
 
 The manual system-user token form additionally requires the Super Admin role **and** `META_ALLOW_MANUAL_TOKEN=true`. The public webhook (`/webhooks/meta/leads`) is authenticated by Meta's signature, not by users or permissions. Facebook and Instagram leads follow the normal lead visibility tiers, so a Sales Executive sees only the Facebook leads assigned to them. The Lead 360 integration panel and Enquiries tab show only Page, form and campaign names, never tokens.
 
-Phase 6 added the twelve `call.*` permissions. Defaults:
-
-| Role | Call permissions |
-|------|------------------|
-| Sales Executive | `call.view`, `call.make`, `call.receive`, `call.add_disposition`, `call.edit_notes` |
-| Sales Manager | the above + `call.recording.listen` (the original `call.view_team` grant is deprecated and has no effect) |
-| Admin | all except `call.recording.download` |
-| Super Admin | everything (bypass) |
-
-Nobody except Super Admin can download recordings by default; grant `call.recording.download` explicitly on the Roles screen. Sales Executives cannot listen to recordings, manual-dial or configure telephony. There is no call export permission because no call export exists.
+Phase 6 (telephony) has been removed. Its twelve `call.*` permissions no longer exist in the catalogue, in `RoleSeeder` defaults or in the database (see "Calls (removed)" above).
 
 Phase 7 added **no new permission**. It uses the existing `report.*` permissions, and the Phase 7 migration grants `report.view` to the existing Sales Executive role (also in `RoleSeeder` defaults) so executives see reports on **their own data only**. Defaults:
 

@@ -9,16 +9,15 @@ use Carbon\CarbonImmutable;
 | option and drill-down is limited to what the viewer may see.
 |
 | World (Sept 2026, CRM timezone Asia/Kolkata):
-|   Rahul   — 2 leads (1 won ₹1,000), 1 connected call (300 s), 1 future follow-up
-|   Priya   — 4 "PriyaLead" leads (3 won ₹50,000 each, 1 lost), 2 calls (600 s each),
+|   Rahul   — 2 leads (1 won ₹1,000), 1 future follow-up
+|   Priya   — 4 "PriyaLead" leads (3 won ₹50,000 each, 1 lost),
 |             2 overdue follow-ups, 1 upcoming meeting
-|   Outside — 3 "MumbaiLead" leads (2 won), 1 call
+|   Outside — 3 "MumbaiLead" leads (2 won)
 |   Manager — no leads of their own; legacy team membership grants nothing
 */
 beforeEach(function () {
     $this->org = $org = salesOrg();
     $this->travelTo(CarbonImmutable::parse('2026-09-15 11:00', 'Asia/Kolkata'));
-    telephonySetup([$org->rahul, $org->priya, $org->outsider]);
 
     $r1 = reportLead($org->rahul, ['first_name' => 'Ravi', 'last_name' => 'Client', 'estimated_value' => 1000]);
     $r2 = reportLead($org->rahul, ['first_name' => 'Rekha', 'last_name' => 'Client', 'estimated_value' => 2000]);
@@ -33,11 +32,6 @@ beforeEach(function () {
     $m = collect(range(1, 3))->map(fn ($i) => reportLead($org->outsider, ['first_name' => 'MumbaiLead', 'last_name' => "N{$i}", 'estimated_value' => 70000, 'city' => 'Mumbai']));
     moveLead($m[0], 'won', $org->outsider);
     moveLead($m[1], 'won', $org->outsider);
-
-    finishCall($this, startCall($r2, $org->rahul), 'completed', 300);
-    finishCall($this, startCall($p[0], $org->priya), 'completed', 600);
-    finishCall($this, startCall($p[1], $org->priya), 'completed', 600);
-    finishCall($this, startCall($m[2], $org->outsider), 'completed', 900);
 
     scheduleFollowup($r2, $org->rahul, ['scheduled_date' => '2026-09-16', 'scheduled_time' => '11:00']);
     $pOpen = reportLead($org->priya, ['first_name' => 'PriyaLead', 'last_name' => 'Open']);
@@ -67,19 +61,13 @@ test('A: Rahul sees only his own numbers on every report', function () {
         ->and(reportKpi($overview, 'sales', 'won'))->toBe(1)
         ->and((float) reportKpi($overview, 'sales', 'won_value'))->toBe(1000.0)
         ->and(reportKpi($overview, 'sales', 'lost'))->toBe(0)
-        ->and(reportKpi($overview, 'activity', 'calls'))->toBe(1)
         ->and(reportKpi($overview, 'activity', 'followups_overdue'))->toBe(0)
         ->and(reportKpi($overview, 'activity', 'meetings_upcoming'))->toBe(0)
         ->and($overview['context']['tier'])->toBe(ReportScope::OWN);
 
-    $calls = reportProps($this, $rahul, 'calls', $this->month);
-    expect(reportKpi($calls, 'summary', 'total'))->toBe(1)
-        ->and(reportKpi($calls, 'summary', 'talk'))->toBe(300);
-
     $perf = reportProps($this, $rahul, 'sales-performance', $this->month);
     expect(reportRows($perf, 'performance')->pluck('name')->all())->toBe(['Rahul Sharma'])
-        ->and(reportSection($perf, 'performance')['totals']['won'])->toBe(1)
-        ->and(reportSection($perf, 'performance')['totals']['calls'])->toBe(1);
+        ->and(reportSection($perf, 'performance')['totals']['won'])->toBe(1);
 
     $fu = reportProps($this, $rahul, 'follow-ups', $this->month);
     expect(reportKpi($fu, 'summary', 'overdue_now'))->toBe(0);
@@ -122,13 +110,13 @@ test('B: a manager on a legacy team sees only their own report data', function (
 
     $overview = reportProps($this, $o->manager, 'overview', $this->month);
     expect(reportKpi($overview, 'sales', 'new_leads'))->toBe(0)
-        ->and(reportKpi($overview, 'activity', 'calls'))->toBe(0)
+        ->and(reportKpi($overview, 'activity', 'followups_overdue'))->toBe(0)
         ->and($overview['context']['tier'])->toBe(ReportScope::OWN);
 
     $perf = reportProps($this, $o->manager, 'sales-performance', $this->month);
     expect(reportRows($perf, 'performance')->pluck('name')->all())->toBe(['Mehul Manager']);
 
-    foreach (['overview', 'sales-performance', 'calls', 'pipeline', 'campaigns', 'ageing', 'activity'] as $slug) {
+    foreach (['overview', 'sales-performance', 'pipeline', 'campaigns', 'ageing', 'activity'] as $slug) {
         assertNoForeignNames(reportProps($this, $o->manager, $slug, $this->month), ['Rahul', 'Priya', 'MumbaiLead', 'Outside Exec', 'Ahmedabad Team', 'Mumbai Team', '50000', '70000']);
     }
 
@@ -170,7 +158,6 @@ test('D: drill-down links go to operational screens that apply their own visibil
 
     // Hand-crafted drill-down for Priya's leads still shows nothing of hers.
     $this->actingAs($o->rahul)->get('/leads?assignee='.$o->priya->id)->assertOk()->assertDontSee('PriyaLead');
-    $this->actingAs($o->rahul)->get('/calls?agent='.$o->priya->id)->assertOk()->assertDontSee('PriyaLead');
 });
 
 test('admin and super admin see company data', function () {
@@ -180,7 +167,7 @@ test('admin and super admin see company data', function () {
         $overview = reportProps($this, $user, 'overview', $this->month);
         expect(reportKpi($overview, 'sales', 'new_leads'))->toBe(10)
             ->and(reportKpi($overview, 'sales', 'won'))->toBe(6)
-            ->and(reportKpi($overview, 'activity', 'calls'))->toBe(4)
+            ->and(reportKpi($overview, 'activity', 'followups_overdue'))->toBe(2)
             ->and($overview['context']['tier'])->toBe(ReportScope::ALL);
     }
 });

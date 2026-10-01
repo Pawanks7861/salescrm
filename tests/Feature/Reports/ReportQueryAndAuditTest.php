@@ -135,8 +135,8 @@ test('reporting demo data is never seeded outside the local environment', functi
     reportLead($this->org->rahul);
     $this->seed(ReportingDemoSeeder::class);
 
-    expect(DB::table('calls')->count())->toBe(0)
-        ->and(User::where('email', 'arjun@salescrm.local')->exists())->toBeFalse();
+    expect(User::where('email', 'arjun@salescrm.local')->exists())->toBeFalse()
+        ->and(DB::table('meetings')->count())->toBe(0);
 });
 
 test('responses carry aggregates, not full lead records', function () {

@@ -3,7 +3,6 @@
 namespace App\Services\Reports\Definitions;
 
 use App\Services\Reports\Metric;
-use App\Services\Reports\Metrics\CallMetrics;
 use App\Services\Reports\Metrics\FollowupMetrics;
 use App\Services\Reports\Metrics\LeadMetrics;
 use App\Services\Reports\Metrics\MeetingMetrics;
@@ -28,7 +27,6 @@ class OverviewReport extends ReportDefinition
         private readonly LeadMetrics $leads,
         private readonly PipelineMetrics $pipeline,
         private readonly ResponseMetrics $response,
-        private readonly CallMetrics $calls,
         private readonly FollowupMetrics $followups,
         private readonly MeetingMetrics $meetings,
     ) {
@@ -41,12 +39,6 @@ class OverviewReport extends ReportDefinition
         $sections = [$this->kpis('sales', 'Leads & outcomes', $this->salesKpis($q, $p, $links), $p !== null)];
 
         $activity = [];
-        if ($this->canSee($q, 'call')) {
-            $c = $this->calls->summary($q);
-            $pc = $p ? $this->calls->summary($p) : null;
-            $activity[] = Metric::kpi('calls', 'Calls', $c['total'], 'number', 'Calls started in the period (inbound + outbound).', $pc['total'] ?? null, link: $links->calls());
-            $activity[] = Metric::kpi('connection_rate', 'Connection rate', $c['connection_rate'], 'percent', 'Connected outbound calls ÷ finished outbound calls.', $pc['connection_rate'] ?? null);
-        }
         if ($this->canSee($q, 'followup')) {
             $f = $this->followups->summary($q);
             $pf = $p ? $this->followups->summary($p) : null;

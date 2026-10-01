@@ -6,7 +6,7 @@ Browser notifications are an extra delivery channel on top of the in-app notific
 | --- | --- | --- | --- | --- |
 | New lead assigned to you (manual, rule, Meta) | `NEW_LEAD_ASSIGNED` | yes | yes | new-lead chime |
 | Follow-up reminder ("due at 4:30 PM") | `FOLLOWUP_REMINDER` | yes | yes | follow-up chime |
-| Follow-up overdue alert, meetings, calls, imports, … | none | yes | no | none |
+| Follow-up overdue alert, meetings, imports, … | none | yes | no | none |
 
 ## Delivery chain
 
@@ -41,7 +41,7 @@ The push carries only what the OS notification needs:
   "icon": "/images/notification-icon.png", "sound": true, "ts": 1790000000000 }
 ```
 
-- It never contains a phone number, email, notes, tokens, recording URLs or the lead record. The title is capped at 80 characters and the body at 180.
+- It never contains a phone number, email, notes, tokens, file paths or the lead record. The title is capped at 80 characters and the body at 180.
 - Bodies: "A new lead has been assigned to you." or "Amit Desai has been assigned to you."; "Your follow-up is due at 4:30 PM." or "Call with Amit Desai at 4:30 PM.". The name variants are used only while **Show the lead name in browser notifications** (`notifications.browser_show_names`) is on.
 - `url` always goes through `/notifications/{id}/open`. That route checks the notification belongs to the signed-in user, marks it read, **re-checks lead or follow-up visibility** and redirects to `/leads/{id}` or `/follow-ups/{id}`, which show the record's current state (completed, cancelled, rescheduled). If access was lost, for example because the lead was reassigned, it shows the stale-notification message and the record itself returns 403. A notification never grants access.
 

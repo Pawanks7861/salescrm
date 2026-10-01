@@ -116,23 +116,6 @@ enum AuditAction: string
     case FacebookLeadCreated = 'FACEBOOK_LEAD_CREATED';
     case FacebookEnquiryCreated = 'FACEBOOK_ENQUIRY_CREATED';
 
-    case CallInitiated = 'CALL_INITIATED';
-    case CallAnswered = 'CALL_ANSWERED';
-    case CallCompleted = 'CALL_COMPLETED';
-    case CallFailed = 'CALL_FAILED';
-    case CallMissed = 'CALL_MISSED';
-    case CallDispositionAdded = 'CALL_DISPOSITION_ADDED';
-    case CallDispositionChanged = 'CALL_DISPOSITION_CHANGED';
-    case CallNotesUpdated = 'CALL_NOTES_UPDATED';
-    case CallRecordingAvailable = 'CALL_RECORDING_AVAILABLE';
-    case CallRecordingListened = 'CALL_RECORDING_LISTENED';
-    case CallRecordingDownloaded = 'CALL_RECORDING_DOWNLOADED';
-    case CallRecordingDeleted = 'CALL_RECORDING_DELETED';
-    case CallWebhookRejected = 'CALL_WEBHOOK_REJECTED';
-    case CallAccessDenied = 'CALL_ACCESS_DENIED';
-    case TelephonyConfigurationChanged = 'TELEPHONY_CONFIGURATION_CHANGED';
-    case TelephonyUserChanged = 'TELEPHONY_USER_CHANGED';
-
     case ReportViewed = 'REPORT_VIEWED';
     case ReportExported = 'REPORT_EXPORTED';
     case ReportExportDownloaded = 'REPORT_EXPORT_DOWNLOADED';

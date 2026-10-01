@@ -15,7 +15,7 @@ class ActivityReport extends ReportDefinition
 
     public const CATEGORY = 'People';
 
-    public const DESCRIPTION = 'Work logged per person in the period: leads created, status changes, notes, calls, follow-ups and meetings.';
+    public const DESCRIPTION = 'Work logged per person in the period: leads created, status changes, notes, follow-ups and meetings.';
 
     public const FILTERS = ['date', 'user', 'archived'];
 
@@ -43,9 +43,6 @@ class ActivityReport extends ReportDefinition
                 continue;
             }
             $row['_muted'] = ! $user->is_active;
-            $row['_links'] = array_filter([
-                'calls' => $links->calls(['agent' => $user->id, 'direction' => 'outbound']),
-            ]);
             $rows[] = $row;
         }
 
@@ -55,9 +52,6 @@ class ActivityReport extends ReportDefinition
             $this->col('status_changes', 'Status changes'),
             $this->col('notes', 'Notes'),
         ];
-        if ($this->canSee($q, 'call')) {
-            $columns[] = $this->col('calls', 'Outbound calls');
-        }
         if ($this->canSee($q, 'followup')) {
             $columns[] = $this->col('followups_completed', 'Follow-ups completed');
         }

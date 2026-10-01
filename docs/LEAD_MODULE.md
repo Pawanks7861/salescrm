@@ -200,13 +200,9 @@ Audit events added in Phase 2: `LEAD_CREATED`, `LEAD_UPDATED`, `LEAD_VIEWED` (on
 - **Lead list:** the Page and form filters are applied in SQL. The options come from synced Pages and forms.
 - **Notifications:** the assignee gets "New Facebook lead assigned" (or "Instagram"), and the owner gets "New Facebook enquiry from existing lead" on a merge. Both are sent once, after commit.
 
-## 15. Calls (Phase 6)
+## 15. Calls (Phase 6) — removed
 
-- **Call button** (header and quick actions on Lead 360): offers one entry per filled contact field (`phone`, `alternate_phone`) and per available mode (browser / phone). The browser sends only `lead_id` + `contact_field`, and the server resolves the number from the lead. The button is disabled with a reason when the user has no calling account or calling is switched off. Starting a call while an outcome is still owed for the previous call is refused ("Save the outcome of your last call first."). The `tel:` link stays as a fallback.
-- **Calls tab:** shows the lead's visible calls (up to 50, newest first) with status, duration, agent, disposition, "Add outcome" and an inline player when the user may listen.
-- **Lead updates from calls:** a completed call sets `last_contacted_at` and adds a `call_completed` activity. Busy, no-answer and failed calls add an activity but do not mark the lead contacted. The outcome modal can change the lead status through `LeadService::changeStatus` (Lost still requires a lost reason), schedule a follow-up (`FollowupService`) or schedule a meeting (`MeetingService`).
-- **Incoming calls:** matched by `normalized_phone` / `normalized_alternate_phone`. An unknown number never creates a lead automatically; the screen-pop offers **Create lead**, which opens `leads.create?phone=` prefilled.
-- **Visibility:** calls on a lead are visible only to users who can see the lead. After reassignment, the previous agent no longer sees the lead's calls, although the historical agent is kept on the call. See [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The telephony module has been removed. Lead 360 has no call button, calls tab or screen-pop any more. The lead's `phone`, `alternate_phone` and their normalized columns are unchanged: they are still captured, validated, used for duplicate detection and search, and shown on Lead 360 as a plain `tel:` link that opens the user's own dialer. Historical `call_completed` activities on the lead timeline are kept as history.
 ## 16. Status history and reports (Phase 7)
 
 Every lead creation and status change through `LeadService` also writes a `lead_status_changes` row (from, to, when, by whom, and the owner at that moment; the legacy `team_id` column is no longer written). Existing history was backfilled from the activity timeline. Reports use it for the funnel, stage durations and "won/lost in the period"; the lead's current status is unchanged by this. Leads created outside `LeadService` (direct imports) have no history, and reports fall back to their current status instead of inventing transitions. Lead metrics in reports are attributed to the lead's current owner. See [REPORTING_MODULE.md](REPORTING_MODULE.md).

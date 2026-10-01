@@ -27,7 +27,7 @@ class ClearDemoData extends Command
     public function handle(DemoDataCleaner $cleaner): int
     {
         if (app()->isProduction() && ! $this->option('force-production')) {
-            $this->error('Refusing to run in production. This command deletes every lead, call, meeting and follow-up.');
+            $this->error('Refusing to run in production. This command deletes every lead, meeting and follow-up.');
             $this->line('For a new production CRM use a fresh database: php artisan migrate --force && php artisan db:seed --class=ProductionSeeder --force && php artisan crm:create-super-admin');
 
             return self::FAILURE;

@@ -33,8 +33,6 @@ class ActivityMetrics
                 ->whereIn('lead_notes.lead_id', $q->leads(false)->select('leads.id'))
                 ->where(fn ($w) => $w->where('lead_notes.visibility', NoteVisibility::Team->value)->orWhere('lead_notes.created_by', $viewer))
                 ->whereBetween('lead_notes.created_at', [$from, $to]), 'lead_notes.created_by'),
-            'calls' => $pluck($q->calls()->where('calls.direction', 'outbound')
-                ->whereBetween('calls.started_at', [$from, $to]), 'calls.agent_user_id'),
             'followups_completed' => $pluck($q->followups()->where('followups.status', 'completed')
                 ->whereBetween('followups.completed_at', [$from, $to]), 'followups.completed_by'),
             'meetings_completed' => $pluck($q->meetings()->where('meetings.status', 'completed')

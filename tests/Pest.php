@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\FacebookIntegrationStatus;
-use App\Models\Call;
 use App\Models\FacebookForm;
 use App\Models\FacebookIntegration;
 use App\Models\FacebookPage;
@@ -17,9 +16,6 @@ use App\Models\MeetingType;
 use App\Models\Permission;
 use App\Models\PushSubscription;
 use App\Models\Team;
-use App\Models\TelephonyIntegration;
-use App\Models\TelephonyNumber;
-use App\Models\TelephonyUser;
 use App\Models\User;
 use App\Services\Followups\FollowupService;
 use App\Services\Leads\LeadService;
@@ -28,9 +24,6 @@ use App\Services\Meta\MetaIntegrationService;
 use App\Services\Notifications\PushTransport;
 use App\Services\Notifications\WebPushService;
 use App\Services\PermissionRegistrar;
-use App\Services\Telephony\CallService;
-use App\Services\Telephony\Providers\FakeTelephonyProvider;
-use App\Services\Telephony\TelephonyManager;
 use App\Support\CrmTime;
 use Carbon\CarbonImmutable;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -334,10 +327,8 @@ function metaPost(Illuminate\Foundation\Testing\TestCase $test, array|string $pa
 }
 
 /*
-| Telephony helpers. phpunit.xml sets TELEPHONY_DRIVER=fake; the fake provider
-| never touches the network and is shared through the TelephonyManager singleton.
+| Permission helpers.
 */
-const TELEPHONY_TEST_TOKEN = 'local-fake-callback-token';
 
 /** Per-user permission override ('grant' | 'deny'), cache flushed. */
 function setPermission(User $user, string $permission, string $type = 'grant'): User
@@ -359,91 +350,6 @@ function legacyRoleGrant(User $user, string $permission): User
     app(PermissionRegistrar::class)->flushAll();
 
     return $user->fresh();
-}
-
-/**
- * Active fake integration (PSTN + browser + recording), a default number and a
- * calling account for each given user (registered phone 9190000000NN).
- */
-function telephonySetup(array $users = [], array $integration = []): TelephonyIntegration
-{
-    $row = new TelephonyIntegration;
-    $row->forceFill(array_merge([
-        'provider' => 'fake',
-        'name' => 'Local simulator',
-        'is_active' => true,
-        'browser_calling_enabled' => true,
-        'pstn_calling_enabled' => true,
-        'recording_enabled' => true,
-        'default_calling_mode' => 'pstn',
-    ], $integration))->save();
-
-    $number = new TelephonyNumber;
-    $number->forceFill([
-        'integration_id' => $row->id, 'phone_number' => '+918000000001', 'normalized_number' => '918000000001',
-        'display_name' => 'Sales line', 'is_active' => true, 'is_default' => true,
-    ])->save();
-
-    foreach (array_values($users) as $i => $user) {
-        telephonyAgent($row, $user, ['registered_phone' => sprintf('+9190000000%02d', $i + 1)]);
-    }
-
-    return $row;
-}
-
-function telephonyAgent(TelephonyIntegration $integration, User $user, array $overrides = []): TelephonyUser
-{
-    $phone = $overrides['registered_phone'] ?? '+919000000099';
-    $agent = new TelephonyUser;
-    $agent->forceFill(array_merge([
-        'integration_id' => $integration->id,
-        'user_id' => $user->id,
-        'provider_user_id' => 'agent-'.$user->id,
-        'provider_sip_username' => 'sip'.$user->id,
-        'registered_phone' => $phone,
-        'registered_phone_normalized' => preg_replace('/\D/', '', $phone),
-        'calling_mode' => 'pstn',
-        'is_enabled' => true,
-    ], $overrides))->save();
-
-    return $agent;
-}
-
-function fakeTelephony(): FakeTelephonyProvider
-{
-    return app(TelephonyManager::class)->provider();
-}
-
-/** Posts a fake-provider callback exactly as the simulator would. */
-function telephonyCallback(Illuminate\Foundation\Testing\TestCase $test, array $payload, string $endpoint = 'status', ?string $token = TELEPHONY_TEST_TOKEN): TestResponse
-{
-    $query = $token === null ? '' : '?token='.urlencode($token);
-
-    return $test->postJson("/webhooks/telephony/fake/{$endpoint}{$query}", $payload);
-}
-
-/** Starts an outbound PSTN call through CallService as `$agent` and returns the Call. */
-function startCall(Lead $lead, User $agent, array $input = []): Call
-{
-    return app(CallService::class)->startOutbound($agent, $lead, array_merge(['contact_field' => 'phone', 'mode' => 'pstn'], $input))['call'];
-}
-
-/** Drives a call to a terminal state via provider callbacks. */
-function finishCall(Illuminate\Foundation\Testing\TestCase $test, Call $call, string $status = 'completed', int $talk = 402, ?string $recording = null): Call
-{
-    $sid = $call->provider_call_id ?? 'FAKE-'.$call->id;
-    if ($status === 'completed') {
-        telephonyCallback($test, ['call_id' => $sid, 'reference' => $call->client_reference, 'status' => 'answered'])->assertOk();
-    }
-    telephonyCallback($test, array_filter([
-        'call_id' => $sid,
-        'reference' => $call->client_reference,
-        'status' => $status,
-        'talk_seconds' => $status === 'completed' ? $talk : null,
-        'recording_url' => $recording,
-    ], fn ($v) => $v !== null))->assertOk();
-
-    return $call->fresh();
 }
 
 /*

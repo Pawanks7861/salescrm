@@ -35,7 +35,6 @@ Route::middleware(['auth', 'active', 'office', 'throttle:crm'])->group(function 
     require __DIR__.'/leads.php';
     require __DIR__.'/followups.php';
     require __DIR__.'/meetings.php';
-    require __DIR__.'/calls.php';
     require __DIR__.'/reports.php';
 });
 

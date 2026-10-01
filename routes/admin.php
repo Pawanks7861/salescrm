@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\FollowupSettingsController;
 use App\Http\Controllers\Admin\Integrations\FacebookFormController;
 use App\Http\Controllers\Admin\Integrations\FacebookIntegrationController;
 use App\Http\Controllers\Admin\Integrations\FacebookWebhookEventController;
-use App\Http\Controllers\Admin\Integrations\TelephonyIntegrationController;
 use App\Http\Controllers\Admin\LeadSettingsController;
 use App\Http\Controllers\Admin\LoginHistoryController;
 use App\Http\Controllers\Admin\MeetingSettingsController;
@@ -124,19 +123,5 @@ Route::middleware('throttle:crm')->group(function () {
 
         Route::get('events', [FacebookWebhookEventController::class, 'index'])->name('events.index');
         Route::post('events/{facebookEvent}/retry', [FacebookWebhookEventController::class, 'retry'])->name('events.retry');
-    });
-
-    Route::middleware('permission:call.configure')->prefix('integrations/telephony')->name('integrations.telephony.')->group(function () {
-        Route::get('/', [TelephonyIntegrationController::class, 'index'])->name('index');
-        Route::put('integration', [TelephonyIntegrationController::class, 'updateIntegration'])->name('integration');
-        Route::put('settings', [TelephonyIntegrationController::class, 'updateSettings'])->name('settings');
-        Route::post('health', [TelephonyIntegrationController::class, 'health'])->middleware('throttle:sensitive')->name('health');
-        Route::post('numbers', [TelephonyIntegrationController::class, 'storeNumber'])->name('numbers.store');
-        Route::post('numbers/sync', [TelephonyIntegrationController::class, 'syncNumbers'])->middleware('throttle:sensitive')->name('numbers.sync');
-        Route::put('numbers/{telephonyNumber}', [TelephonyIntegrationController::class, 'updateNumber'])->name('numbers.update');
-        Route::post('agents', [TelephonyIntegrationController::class, 'storeAgent'])->name('agents.store');
-        Route::put('agents/{telephonyUser}', [TelephonyIntegrationController::class, 'updateAgent'])->name('agents.update');
-        Route::post('dispositions', [TelephonyIntegrationController::class, 'storeDisposition'])->name('dispositions.store');
-        Route::put('dispositions/{callDisposition}', [TelephonyIntegrationController::class, 'updateDisposition'])->name('dispositions.update');
     });
 });

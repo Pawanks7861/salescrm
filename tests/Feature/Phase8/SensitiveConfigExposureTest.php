@@ -12,10 +12,6 @@ beforeEach(function () {
         'app.key' => 'base64:'.base64_encode(str_repeat('Q', 32)),
         'meta.app_secret' => 'META-SECRET-EXPOSE-1',
         'meta.webhook_verify_token' => 'META-VERIFY-EXPOSE-2',
-        'telephony.exotel.api_key' => 'EXOTEL-KEY-EXPOSE-3',
-        'telephony.exotel.api_token' => 'EXOTEL-TOKEN-EXPOSE-4',
-        'telephony.exotel.webhook_secret' => 'EXOTEL-HOOK-EXPOSE-5',
-        'telephony.exotel.webrtc_access_token' => 'EXOTEL-WEBRTC-EXPOSE-6',
         'webpush.vapid.private_key' => 'VAPID-PRIVATE-EXPOSE-7',
         'fcm.private_key' => 'FCM-PRIVATE-EXPOSE-10',
         'database.connections.mysql.password' => 'DB-PASSWORD-EXPOSE-8',
@@ -39,7 +35,6 @@ test('admin pages never contain configured secrets', function (string $url) {
 })->with([
     '/dashboard',
     '/admin/settings',
-    '/admin/integrations/telephony',
     '/admin/integrations/facebook',
     '/profile',
 ]);
@@ -50,16 +45,6 @@ test('Inertia shared props expose only branding, platform and user data', functi
     expect(array_keys($props['app']))->toEqualCanonicalizing(['name', 'timezone', 'company', 'logo_url', 'favicon_url'])
         ->and($props['platform'])->toBe(['name' => 'Buildify360', 'url' => 'https://buildify360.com']);
     assertNoSecrets(json_encode($props), $this->secrets);
-});
-
-test('the browser telephony session never returns provider API credentials', function () {
-    telephonySetup([$this->org->rahul]);
-
-    $json = $this->actingAs($this->org->rahul)->postJson(route('telephony.session'))->getContent();
-
-    foreach (['EXOTEL-KEY-EXPOSE-3', 'EXOTEL-TOKEN-EXPOSE-4', 'EXOTEL-HOOK-EXPOSE-5'] as $secret) {
-        expect($json)->not->toContain($secret);
-    }
 });
 
 test('health and production-check output contain no secrets', function () {

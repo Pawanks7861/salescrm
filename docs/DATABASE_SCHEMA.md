@@ -8,8 +8,8 @@ Legend: Phases 1–2 implemented; Phases 3–5 designed and created in that phas
 >
 > - Tables `teams` and `team_users`.
 > - Columns `users.team_id` and `users.manager_id`. Both are hidden from the UI and ignored if posted.
-> - Columns `leads.team_id`, `followups.team_id`, `meetings.team_id`, `calls.team_id` and `lead_status_changes.team_id`. They're **no longer written** on new rows; existing values stay as history.
-> - Columns `lead_assignments.from_team_id` / `to_team_id`, `lead_assignment_rules.assigned_team_id` and `telephony_numbers.team_id`.
+> - Columns `leads.team_id`, `followups.team_id`, `meetings.team_id` and `lead_status_changes.team_id`. They're **no longer written** on new rows; existing values stay as history.
+> - Columns `lead_assignments.from_team_id` / `to_team_id` and `lead_assignment_rules.assigned_team_id`.
 > - The `team` / `team_round_robin` assignment types and the `team` condition. Rules using them never execute.
 >
 > Marked **(deprecated)** below.
@@ -310,57 +310,20 @@ Group `facebook`: `placeholder_name`, `use_instagram_source`, `auto_enable_new_f
 `FACEBOOK_CONNECTED`, `FACEBOOK_DISCONNECTED`, `FACEBOOK_CONNECTION_FAILED`, `FACEBOOK_CONNECTION_CHECKED`, `FACEBOOK_PAGE_SYNCED`, `FACEBOOK_PAGE_SUBSCRIBED`, `FACEBOOK_PAGE_UNSUBSCRIBED`, `FACEBOOK_FORM_SYNCED`, `FACEBOOK_FORM_UPDATED`, `FACEBOOK_FIELD_MAPPING_UPDATED`, `FACEBOOK_WEBHOOK_REJECTED`, `FACEBOOK_WEBHOOK_FAILED`, `FACEBOOK_WEBHOOK_RETRIED`, `FACEBOOK_LEADS_SYNC_REQUESTED`, `FACEBOOK_LEAD_CREATED`, `FACEBOOK_ENQUIRY_CREATED`. Values pass through `SecretRedactor`.
 
 
-## Phase 6 — Telephony, browser calling & call recording (implemented)
+## Phase 6 — Telephony — Removed
 
-Migration `2026_09_24_500001_create_telephony_tables` is additive. It creates seven new tables and does not change or drop any existing table or column. Behaviour is described in [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The calling module and its seven tables were removed. Migration `2026_09_24_500001_create_telephony_tables` (history, unchanged) created them; migration `2026_10_01_100000_remove_telephony_module` drops them children-first: `call_recordings`, `call_events`, `calls`, `call_dispositions`, `telephony_users`, `telephony_numbers`, `telephony_integrations`. No other table had a foreign key into them.
 
-**Secrets:** Exotel API key/token, webhook secret and WebRTC token live in `.env` only. Provider recording URLs and callback payloads are stored encrypted (`*_encrypted`, Laravel `encrypted` cast).
+The same migration deletes:
 
-### telephony_integrations
-`id, provider(30) **unique**, name(100), configuration_encrypted text null (non-secret options), is_active bool default false, browser_calling_enabled bool default false, pstn_calling_enabled bool default true, recording_enabled bool default true, default_calling_mode(10) default pstn (webrtc, pstn), last_health_check_at, last_health_status(20), last_error(500), last_error_at, last_callback_at, created_by / updated_by FK users null, timestamps`.
+- `permissions` rows named `call.*`, with their `role_permissions` and `user_permissions` links;
+- `settings` rows with keys `telephony.*`;
+- `number_sequences` rows with prefix `C:*` (the old call numbers). Lead (`LD`) and meeting (`M:*`) sequences are untouched;
+- stored missed-call rows in `notifications`.
 
-### telephony_numbers
-`id, integration_id FK RESTRICT, provider_number_id(100) null, phone_number(30), normalized_number(20) (index), display_name(100), number_type(20) default virtual, supports_inbound / supports_outbound / supports_webrtc bool, team_id FK teams null SET NULL (deprecated, ignored), is_active, is_default, metadata_json null, timestamps`, with **unique(integration_id, normalized_number)**.
+**Kept:** every lead phone column (`phone`, `alternate_phone`, `normalized_phone`), `audit_logs` rows with call or telephony actions such as `CALL_STARTED` (plain strings, still viewable and filterable), and `activities` rows of type `call_*` (their subject is the lead, not a call).
 
-### telephony_users (calling accounts)
-`id, user_id FK RESTRICT, integration_id FK RESTRICT, provider_user_id(100) null (Exotel app user, WebRTC), provider_agent_id(100) null, provider_sip_username(150) null, registered_phone(30) null, registered_phone_normalized(20) null (index), calling_mode(10) default pstn, is_enabled bool, last_registered_at, last_seen_at, metadata_json null, created_by / updated_by, timestamps`, with **unique(integration_id, user_id)** and index(integration_id, provider_user_id). No SIP passwords are stored.
-
-### call_dispositions
-`id, name(100), slug(100) **unique**, color(20), is_contact bool, requires_note bool, requires_next_action bool, is_active bool (index), is_system bool, sort_order (index), timestamps`. Seeded: connected, interested, not_interested, call_back, followup_required, meeting_required, proposal_required, busy, no_answer, wrong_number, converted, other. Rows are deactivated and never deleted, because calls reference them with RESTRICT.
-
-### calls
-| Column | Notes |
-|---|---|
-| call_number(30) **unique** | `CALL-YYYY-000001` (`number_sequences` key `C:{prefix}`, prefix setting `telephony.number_prefix`) |
-| client_reference uuid **unique** | CRM reference sent to Exotel as `CustomField` and to the softphone |
-| lead_id FK leads null RESTRICT | null for unknown callers / manual dial |
-| agent_user_id FK users null SET NULL, team_id FK teams null SET NULL | agent is **historical**, never rewritten on lead reassignment; `team_id` **(deprecated)**, no longer written |
-| integration_id, telephony_number_id FK null SET NULL | |
-| provider(30), provider_call_id(100) null, provider_status(40) null | **unique(provider, provider_call_id)** |
-| direction(10) inbound/outbound, channel(10) pstn/webrtc, contact_field(20) null | |
-| from_number(30), from_number_normalized(20), to_number(30), to_number_normalized(20), customer_number_normalized(20) (index), virtual_number(30) | |
-| status(20) default initiated | `CallStatus`: initiated, queued, dialing, ringing, answered, completed, busy, no_answer, failed, cancelled, missed. Moves forward only |
-| started_at, ringing_at, answered_at, ended_at; ring/talk/total_duration_seconds | provider facts, immutable to users |
-| requires_disposition bool, disposition_id FK RESTRICT null, disposition_at, disposition_by FK null | |
-| notes text null, notes_updated_at, notes_updated_by | |
-| next_action(20) null, followup_id FK null SET NULL, meeting_id FK null SET NULL | link to the Phase 3/4 record created from the outcome |
-| failure_code(50), failure_reason(255) | |
-| last_event_at, reconciled_at, reconcile_attempts | reconciliation state |
-| created_by, updated_by, timestamps | indexes: status, direction, started_at, answered_at, disposition_id, (lead_id, started_at), (agent_user_id, started_at), (team_id, started_at), (agent_user_id, requires_disposition, disposition_id), (status, started_at) |
-
-There are no soft deletes and no delete route: call records are permanent.
-
-### call_events (callback ledger)
-`id, call_id FK null SET NULL, provider(30), provider_call_id(100) null (index), provider_event_id(100) null, dedupe_key(191) **unique** (idempotency), event_type(40), provider_status(40), occurred_at, received_at, processing_status(20) (index) (received, processed, ignored, failed), attempts, payload_encrypted text null (sanitised: credentials redacted, recording URL removed), error_message(500), source_ip(45), processed_at, failed_at, timestamps`, with index(call_id, received_at). Processed and ignored rows are pruned after `telephony.event_retention_days`.
-
-### call_recordings
-`id, call_id FK **unique** RESTRICT (one per call), provider_recording_id(100) null, storage_type(20) (provider, private_storage), provider_reference_encrypted text null (**never sent to the browser**), disk(50), path(500) (private archive), mime_type, file_size, duration_seconds, status(20) (index) (`CallRecordingStatus`: pending, available, failed, expired, deleted), attempts, failure_reason, available_at, archived_at, expires_at (index), deleted_at, deleted_by FK null, timestamps`.
-
-### Settings
-Group `telephony`: `number_prefix`, `require_disposition`, `require_disposition_unconnected`, `notify_missed_calls`, `notes_edit_window_hours`, `recording_storage`, `recording_retention_days`, `recording_notice_enabled`, `recording_notice_text`, `event_retention_days`. These are managed in Admin → Telephony, and changes are audited as `TELEPHONY_CONFIGURATION_CHANGED`.
-
-### Audit actions
-`CALL_INITIATED`, `CALL_ANSWERED`, `CALL_COMPLETED`, `CALL_FAILED`, `CALL_MISSED`, `CALL_DISPOSITION_ADDED`, `CALL_DISPOSITION_CHANGED`, `CALL_NOTES_UPDATED`, `CALL_RECORDING_AVAILABLE`, `CALL_RECORDING_LISTENED`, `CALL_RECORDING_DOWNLOADED`, `CALL_RECORDING_DELETED`, `CALL_WEBHOOK_REJECTED`, `CALL_ACCESS_DENIED`, `TELEPHONY_CONFIGURATION_CHANGED`, `TELEPHONY_USER_CHANGED`. Recording URLs and credentials are never written to audit values.
+`down()` recreates the seven tables empty. Call data, `call.*` permissions and `telephony.*` settings are not restored, so restore from a backup if the old data is ever needed.
 
 ## Phase 7 — Reporting (implemented)
 

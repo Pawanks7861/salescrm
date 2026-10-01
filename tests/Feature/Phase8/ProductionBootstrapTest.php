@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Call;
 use App\Models\FacebookIntegration;
 use App\Models\Lead;
 use App\Models\Permission;
@@ -12,7 +11,6 @@ use App\Notifications\Leads\LeadAssignedNotification;
 use App\Services\Leads\LeadNumberService;
 use App\Services\Maintenance\DemoDataCleaner;
 use App\Services\Reports\ReportRegistry;
-use App\Services\Telephony\TelephonyManager;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\ProductionSeeder;
@@ -37,12 +35,12 @@ function seedProduction(): void
 
 function systemCounts(): array
 {
-    return collect(['roles', 'permissions', 'role_permissions', 'lead_statuses', 'lead_sources', 'lost_reasons', 'followup_types', 'meeting_types', 'call_dispositions', 'settings'])
+    return collect(['roles', 'permissions', 'role_permissions', 'lead_statuses', 'lead_sources', 'lost_reasons', 'followup_types', 'meeting_types', 'settings'])
         ->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()])->all();
 }
 
 describe('ProductionSeeder', function () {
-    test('seeds system data only: no users, leads, calls, meetings, follow-ups or Meta enquiries', function () {
+    test('seeds system data only: no users, leads, meetings, follow-ups or Meta enquiries', function () {
         app()->detectEnvironment(fn () => 'production');
         $before = systemCounts();
 
@@ -54,20 +52,20 @@ describe('ProductionSeeder', function () {
             ->and(Permission::count())->toBeGreaterThan(0)
             ->and(Setting::count())->toBeGreaterThan(0);
 
-        foreach (['users', 'leads', 'lead_enquiries', 'calls', 'meetings', 'followups', 'teams', 'campaigns', 'telephony_integrations', 'facebook_integrations', 'notifications'] as $table) {
+        foreach (['users', 'leads', 'lead_enquiries', 'meetings', 'followups', 'teams', 'campaigns', 'facebook_integrations', 'notifications'] as $table) {
             expect(DB::table($table)->count())->toBe(0, "{$table} must be empty");
         }
     });
 
     test('recreates missing system rows without touching admin edits', function () {
         DB::table('lead_sources')->where('slug', 'website')->update(['name' => 'Company Website']);
-        $manual = DB::table('call_dispositions')->where('slug', 'other')->first();
-        DB::table('call_dispositions')->where('id', $manual->id)->delete();
+        $missing = DB::table('meeting_types')->orderByDesc('id')->first();
+        DB::table('meeting_types')->where('id', $missing->id)->delete();
 
         seedProduction();
 
         expect(DB::table('lead_sources')->where('slug', 'website')->value('name'))->toBe('Company Website')
-            ->and(DB::table('call_dispositions')->where('slug', 'other')->exists())->toBeTrue();
+            ->and(DB::table('meeting_types')->where('slug', $missing->slug)->exists())->toBeTrue();
     });
 
     test('DatabaseSeeder outside local never creates a user or demo data', function (string $env) {
@@ -82,14 +80,6 @@ describe('ProductionSeeder', function () {
 
         expect(fn () => (new DemoSeeder)->setContainer(app())->__invoke())->toThrow(RuntimeException::class, 'local-only');
         expect(User::count())->toBe(0);
-    });
-
-    test('the fake telephony provider cannot run in production', function () {
-        config(['telephony.driver' => 'fake']);
-        app()->detectEnvironment(fn () => 'production');
-        app()->forgetInstance(TelephonyManager::class);
-
-        expect(fn () => app(TelephonyManager::class)->provider())->toThrow(RuntimeException::class, 'local/testing');
     });
 });
 
@@ -172,10 +162,8 @@ describe('crm:clear-demo-data', function () {
 
         $lead = Lead::factory()->assignedTo($rahul)->create(['first_name' => 'Amit', 'last_name' => 'Desai']);
         Lead::factory()->assignedTo($rahul)->create(['duplicate_of_id' => $lead->id]);
-        $followup = scheduleFollowup($lead, $rahul);
+        scheduleFollowup($lead, $rahul);
         scheduleMeeting($lead, $rahul);
-        telephonySetup([$rahul]);
-        Call::factory()->by($rahul)->create(['lead_id' => $lead->id, 'followup_id' => $followup->id]);
         metaSetup();
         pushSubscribe($rahul, 'rahul-laptop');
         $rahul->notify(new LeadAssignedNotification($lead));
@@ -212,7 +200,7 @@ describe('crm:clear-demo-data', function () {
 
         $this->artisan('crm:clear-demo-data')->expectsQuestion('Type DELETE-DEMO-DATA to continue', 'delete')->assertFailed();
 
-        expect(Lead::count())->toBe(2)->and(Call::count())->toBe(1);
+        expect(Lead::count())->toBe(2)->and(DB::table('meetings')->count())->toBe(1);
     });
 
     test('removes every operational record, demo users and files; keeps the Super Admin, other staff and system data', function () {
@@ -257,19 +245,18 @@ describe('crm:production-data-check', function () {
             ->assertSuccessful();
     });
 
-    test('fails on demo accounts, demo leads, fake telephony and any business record', function (string $case) {
+    test('fails on demo accounts, demo leads and any business record', function (string $case) {
         User::factory()->superAdmin()->create(['email' => 'owner@client.test']);
         match ($case) {
             'demo account' => User::factory()->create(['email' => 'priya@salescrm.local']),
             'default super admin email' => User::query()->update(['email' => 'superadmin@salescrm.local']),
             'demo lead' => Lead::factory()->create(['first_name' => 'Suresh', 'last_name' => 'Nair']),
             'any lead' => Lead::factory()->create(),
-            'fake telephony integration' => telephonySetup(),
             'no super admin' => User::query()->forceDelete(),
         };
 
         $this->artisan('crm:production-data-check')->assertFailed();
-    })->with(['demo account', 'default super admin email', 'demo lead', 'any lead', 'fake telephony integration', 'no super admin']);
+    })->with(['demo account', 'default super admin email', 'demo lead', 'any lead', 'no super admin']);
 
     test('--live allows business records but still fails on demo markers', function () {
         $owner = User::factory()->superAdmin()->create(['email' => 'owner@client.test']);
@@ -301,12 +288,10 @@ describe('empty CRM', function () {
         'follow-ups' => '/follow-ups',
         'meetings' => '/meetings',
         'calendar' => '/calendar',
-        'calls' => '/calls',
         'notifications' => '/notifications',
         'reports' => '/reports',
         'users' => '/admin/users',
         'facebook integration' => '/admin/integrations/facebook',
-        'telephony integration' => '/admin/integrations/telephony',
         'audit log' => '/admin/audit-logs',
     ]);
 

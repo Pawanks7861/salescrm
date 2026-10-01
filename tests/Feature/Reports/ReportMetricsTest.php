@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\LeadStatusChange;
@@ -20,17 +19,17 @@ beforeEach(function () {
 
 test('I: first response attempt and first contact are distinct (§93)', function () {
     $o = $this->org;
-    telephonySetup([$o->rahul]);
 
     ($this->at)('2026-09-15 10:00');
     $lead = reportLead($o->rahul);
+    $noAnswer = scheduleFollowup($lead, $o->rahul, ['scheduled_date' => '2026-09-15', 'scheduled_time' => '10:30']);
+    $reached = scheduleFollowup($lead, $o->rahul, ['scheduled_date' => '2026-09-15', 'scheduled_time' => '11:00', 'title' => 'Second']);
 
     ($this->at)('2026-09-15 10:04');
-    $noAnswer = startCall($lead, $o->rahul);
-    finishCall($this, $noAnswer, 'no_answer');
+    app(FollowupService::class)->complete($noAnswer->fresh(), ['outcome' => 'no_answer'], $o->rahul);
 
     ($this->at)('2026-09-15 10:12');
-    finishCall($this, startCall($lead, $o->rahul), 'completed', 120);
+    app(FollowupService::class)->complete($reached->fresh(), ['outcome' => 'connected'], $o->rahul);
 
     ($this->at)('2026-09-15 18:00');
     $props = reportProps($this, $o->rahul, 'response-time', ['preset' => 'today']);
@@ -47,28 +46,6 @@ test('I: a lead with no outreach counts as "no attempt", not zero minutes', func
     $props = reportProps($this, $this->org->rahul, 'response-time', ['preset' => 'today']);
     expect(reportKpi($props, 'summary', 'median_attempt'))->toBeNull()
         ->and(reportKpi($props, 'summary', 'no_attempt'))->toBe(1);
-});
-
-test('J: call counts, provider talk time and connection rate (§95)', function () {
-    $o = $this->org;
-    telephonySetup([$o->rahul]);
-    ($this->at)('2026-09-15 10:00');
-    $lead = reportLead($o->rahul);
-
-    finishCall($this, startCall($lead, $o->rahul), 'completed', 300);
-    finishCall($this, startCall($lead, $o->rahul), 'completed', 600);
-    finishCall($this, startCall($lead, $o->rahul), 'no_answer');
-
-    $props = reportProps($this, $o->rahul, 'calls', ['preset' => 'today']);
-    expect(reportKpi($props, 'summary', 'total'))->toBe(3)
-        ->and(reportKpi($props, 'summary', 'connected'))->toBe(2)
-        ->and(reportKpi($props, 'summary', 'talk'))->toBe(900)
-        ->and(reportKpi($props, 'summary', 'avg_talk'))->toBe(450)
-        // Connection rate = connected outbound ÷ finished outbound = 2 / 3.
-        ->and(reportKpi($props, 'summary', 'connection_rate'))->toBe(66.7);
-
-    // Talk time is the provider-reported value, not wall-clock ring time.
-    expect((int) Call::sum('talk_duration_seconds'))->toBe(900);
 });
 
 test('K: overdue follow-ups use the dynamic rule and reschedules are not double counted (§96)', function () {

@@ -114,7 +114,7 @@ CRM visibility is decided **only** by the lead owner and `*.view_all` permission
 | Who | Sees |
 |-----|------|
 | Super Admin / Admin (`*.view_all`) | Everything, including unassigned leads |
-| Any other user (`*.view`) | Leads where `leads.assigned_to = me`, plus follow-ups, meetings and calls that are mine or on those leads |
+| Any other user (`*.view`) | Leads where `leads.assigned_to = me`, plus follow-ups and meetings that are mine or on those leads |
 | Unassigned leads | `lead.view_all` holders only |
 
 There is **no team-based fallback**. The rule is permission-driven, not role-name-driven, so a Sales Manager behaves like any OWN user unless a `*.view_all` permission is granted. Reassigning a lead moves access for all nested records immediately. The previous owner sees "You no longer have access to this lead."
@@ -134,9 +134,9 @@ There is **no team-based fallback**. The rule is permission-driven, not role-nam
 |------|--------|
 | `teams`, `team_users` tables | Kept, read by nothing in authorization |
 | `users.team_id`, `users.manager_id` | Kept. Hidden from the user form and ignored if posted |
-| `leads.team_id`, `followups.team_id`, `meetings.team_id`, `calls.team_id`, `lead_status_changes.team_id` | Kept for history. **No longer written** on new records and never used for authorization or reporting scope |
-| `lead_assignments.from_team_id` / `to_team_id`, `telephony_numbers.team_id` | Kept for history, not used |
-| `lead.view_team`, `followup.view_team`, `meeting.view_team`, `call.view_team`, `report.view_team`, `team.view`, `team.manage` | `Permissions::DEPRECATED`. Stripped from resolved permissions, not seeded, relabelled "(deprecated, no effect)" by `2026_09_24_800001_deprecate_team_permissions` |
+| `leads.team_id`, `followups.team_id`, `meetings.team_id`, `lead_status_changes.team_id` | Kept for history. **No longer written** on new records and never used for authorization or reporting scope |
+| `lead_assignments.from_team_id` / `to_team_id` | Kept for history, not used |
+| `lead.view_team`, `followup.view_team`, `meeting.view_team`, `report.view_team`, `team.view`, `team.manage` | `Permissions::DEPRECATED`. Stripped from resolved permissions, not seeded, relabelled "(deprecated, no effect)" by `2026_09_24_800001_deprecate_team_permissions`. (`call.view_team` was deleted with the telephony module, §12.) |
 | Assignment rules with assignment `team` / `team_round_robin` or condition `team` | Kept for history, flagged "Deprecated — not running". The engine skips them (`LeadAssignmentRule::isDeprecated()`). They can't be enabled, and new ones can't be created |
 
 Dropping these columns and tables requires explicit approval and a separate, reviewed migration.
@@ -251,15 +251,12 @@ Full catalogue and override rules: [PERMISSIONS.md](PERMISSIONS.md). Default see
 | `note.edit_any` / `note.delete` | ✔ | ✔ | |
 | `user.*`, `role.*` | ✔ (except `role.manage`, `user.delete`) | `user.view` | |
 | `report.view` / `report.view_all` / `report.export` | ✔ | `report.view` (own) | `report.view` (own) |
-| `call.view` / `make` / `receive` / `add_disposition` / `edit_notes` | ✔ | ✔ (own) | ✔ (own) |
-| `call.view_all` | ✔ | | |
-| `call.recording.listen` / `call.recording.download` | ✔ / | ✔ / | |
 | `audit.view`, `login_history.view` | ✔ | | |
 | `settings.view` / `settings.manage` | ✔ | | |
 | `facebook.manage` | | | |
 | `file.view` / `file.upload` / `file.download` | ✔ | ✔ | `file.view`, `file.upload` |
 
-Admin does **not** receive `role.manage`, `facebook.manage`, `lead.restore`, `user.delete`, `call.recording.download` or `audit` immutability overrides by default — Super Admin grants them explicitly.
+Admin does **not** receive `role.manage`, `facebook.manage`, `lead.restore`, `user.delete` or `audit` immutability overrides by default — Super Admin grants them explicitly.
 
 The Sales Manager role has **no** `*.view_all` and no team tier. Its extras apply only to records it can see, which by default are its own. The deprecated `*.view_team`, `team.view` and `team.manage` permissions are not in this matrix because they have no effect (§2.4).
 
@@ -314,7 +311,7 @@ flowchart TD
   NEW --> ASG[LeadAssignmentService: rules → fallback]
   NEWF --> ASG
   ASG --> NOTIFY[Notify assignee + audit + activity]
-  NOTIFY --> WORK[Calls / notes / follow-ups]
+  NOTIFY --> WORK[Follow-ups / notes]
   WORK --> MEET[Meeting scheduled → conducted]
   MEET --> PROP[Proposal / Negotiation]
   PROP --> WON[Won]
@@ -448,17 +445,8 @@ POST   /meetings/{meeting}/respond         own RSVP (internal participant)
 GET    /calendar | /calendar/events?start&end&scope=mine&host&type&hide_cancelled   (≤ 62 days, ≤ 1000 events)
 # No meeting export, .ics or download route.
 
-# Calls & telephony (Phase 6 — implemented, routes/calls.php; full table in TELEPHONY_MODULE.md §18)
-# group: permission:call.view|call.view_all ; {call} numeric-only
-GET    /calls | /calls/active | /calls/{call} | /calls/{call}/status
-GET|POST /calls/{call}/outcome            call.add_disposition
-PATCH  /calls/{call}/notes                call.edit_notes
-GET    /calls/{call}/recording            call.recording.listen (proxied stream, Range)
-GET    /calls/{call}/recording/download   call.recording.download (throttle:sensitive)
-POST   /calls                             call.make (throttle:telephony) — lead_id + contact_field; raw number needs call.manual_dial
-GET    /telephony/config ; POST /telephony/session (call.make) ; POST /telephony/incoming/identify (call.receive)
-POST   /telephony/fake/*                  fake driver + local/testing only (404 otherwise)
-# No call export, CSV, bulk recording download or ZIP route.
+# Calls & telephony — removed (Phase 6, §12). None of its pages, admin screens or provider
+# webhooks are registered any more; old URLs return 404.
 
 # Reports (Phase 7 — implemented, routes/reports.php)
 # group: permission:report.view|report.view_all ; scope via ReportScope; {report} whitelisted slug ([a-z-]+), unknown → 404
@@ -499,19 +487,9 @@ PUT  pages/{facebookPage}, settings, forms/{facebookForm}
 GET/PUT forms/{facebookForm}/mapping
 POST forms/{facebookForm}/sync-leads      queued backfill (1–90 days)
 GET  events, POST events/{facebookEvent}/retry
-
-# Integrations (Phase 6 — /admin/integrations/telephony, permission:call.configure)
-GET  /                                    overview (provider, health, numbers, calling accounts, dispositions, settings, permission matrix) — no provider call on load
-PUT  integration, settings
-POST health, numbers/sync                 throttle:sensitive
-POST/PUT numbers[/{telephonyNumber}], agents[/{telephonyUser}], dispositions[/{callDisposition}]   (no delete routes)
-
 # Webhooks (routes/webhooks.php — no web group, no session/CSRF)
 GET  /webhooks/meta/leads                 verify token → raw challenge | 403
 POST /webhooks/meta/leads                 throttle:meta-webhook, raw-body HMAC-SHA256, 2 MB cap
-# routes/telephony-webhooks.php
-GET|POST /webhooks/telephony/{provider}/status throttle:telephony-webhook, URL secret token (constant-time), optional IP allow-list, AccountSid match
-GET|POST /webhooks/telephony/{provider}/passthru same checks; Exotel Passthru (incoming)
 ```
 
 ---
@@ -526,8 +504,8 @@ GET|POST /webhooks/telephony/{provider}/passthru same checks; Exotel Passthru (i
 | 3 | Follow-ups, reminders (scheduler + queue), derived overdue, notification center, dashboard widgets | ✅ Done |
 | 4 | Meetings, types, participants, calendar, conflict detection, reminders, outcomes, rescheduling | ✅ Done |
 | 5 | Facebook config, webhook, Graph fetch, form mapping, campaign metadata, auto assignment, webhook logs | ✅ Done |
-| 6 | Telephony (Exotel): click-to-call, browser calling with PSTN fallback, incoming screen-pop, call history, dispositions, recordings | ✅ Done |
-| 7 | Reporting & analytics: report centre (15 reports), dashboard KPIs, performance, pipeline, funnel, ageing/neglect, response time, calls/follow-ups/meetings, campaigns/Meta, private expiring exports | ✅ Done |
+| 6 | Telephony — Removed. The calling module (click-to-call, browser calling, call history, dispositions, recordings) was built and later removed completely; see "Phase 6 — Telephony — Removed" below | ❌ Removed |
+| 7 | Reporting & analytics: report centre (13 reports), dashboard KPIs, performance, pipeline, funnel, ageing/neglect, response time, follow-ups/meetings, campaigns/Meta, private expiring exports | ✅ Done |
 | 7.1 | UI cleanup (lead value hidden behind a flag, data kept), company logo / favicon branding, opt-in browser push notifications (Web Push + VAPID) and notification sounds | ✅ Done |
 | 8 | Production readiness: production guards, `app:production-check`, `crm:create-super-admin`, CSP/headers, `/health`, error pages, deployment/operations/UAT docs, release 1.0.0 | ✅ Done (external go-live checks pending) |
 | AM | Access model change: team-based visibility removed (Own / All only), Teams UI/routes removed, team columns/tables/permissions deprecated (kept), team rules inert — see §2.4 | ✅ Done |
@@ -660,52 +638,24 @@ Design decisions taken in Phase 5:
 | Manual token | Off by default (`META_ALLOW_MANUAL_TOKEN`), Super Admin only, validated with `debug_token` |
 
 
-### Phase 6 deliverables (implemented)
+### Phase 6 — Telephony — Removed
 
-Behaviour details: [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The telephony / calling module (provider click-to-call, WebRTC browser calling, PSTN, softphone, incoming screen-pop, call history, dispositions, recordings, provider webhooks, the fake simulator) was removed from frontend, backend, configuration, database, tests and documentation. It is not hidden behind a flag; the code is gone.
 
-- **Migration:** `telephony_integrations`, `telephony_numbers`, `telephony_users`, `call_dispositions`, `calls`, `call_events`, `call_recordings`. It is additive only; no existing table changed.
-- **Config and enums:** `config/telephony.php` (driver, Exotel env placeholders, timeouts, recording host allow-list, reconciliation limits), `CallStatus` (forward-only transitions), `CallDirection`, `CallChannel`, `CallRecordingStatus`, `CallRecordingStorage`, `CallEventStatus`, `TelephonyCallingMode`, 16 audit actions, 12 `call.*` permissions and 10 `telephony.*` settings. Seeder: `TelephonyReferenceSeeder` (12 system dispositions).
-- **Provider layer** (`App\Services\Telephony\Providers`): `TelephonyProviderInterface`, `ExotelTelephonyProvider` (connect.json click-to-call, call details, ExoPhones, health, callback parsing, recording proxy), `FakeTelephonyProvider` (local/testing only), resolved by `TelephonyManager`. The manager throws if the fake driver is selected outside local/testing.
-- **Services:** `CallVisibility`, `CallService` (outbound, availability), `CallLifecycleService` (row-locked, forward-only event application), `CallWebhookService` (ledger + idempotency), `IncomingCallService` (privacy-safe screen-pop), `CallCompletionService` (disposition → `FollowupService` / `MeetingService` / `LeadService`), `CallRecordingService`, `CallQueryService`, `CallNotificationService`, `CallNumberService`, `TelephonyDirectory`, `TelephonyAdminService`, `TelephonyReconciliationService`, `WebRtcSessionService`.
-- **HTTP:**
-  - `Calls\CallController`, `CallOutcomeController`, `CallRecordingController`, `TelephonySessionController`, `FakeTelephonyController`;
-  - `Webhooks\TelephonyWebhookController`;
-  - `Admin\Integrations\TelephonyIntegrationController`;
-  - `CallPolicy` and `CallPresenter`, which is the only way call data reaches the browser;
-  - job `ProcessCallRecording`;
-  - notification `MissedCallNotification`.
-- **Commands:** `telephony:reconcile-pending` (every 5 minutes) and `telephony:prune` (daily).
-- **UI:**
-  - `useTelephony` (a softphone state machine with fake and Exotel SDK drivers, single-tab registration, status polling);
-  - `SoftphoneWidget` (incoming pop, active call controls, recording notice);
-  - `CallOutcomeModal`, `CallButton` and `CallsTable`;
-  - Calls list and detail pages;
-  - Lead 360 Calls tab and Call button;
-  - dashboard calls widget;
-  - Admin → Integrations → Telephony.
-- **Tests:** `tests/Feature/Telephony` (9 files, 120 tests), including release checks A–M.
-
-Design decisions taken in Phase 6:
-
-| Decision | Choice |
-|----------|--------|
-| Destination number | Resolved server-side from `lead_id` + `contact_field`; raw numbers only with `call.manual_dial` |
-| Call record first | The call row is committed before the provider request; no transaction during provider HTTP; failure → `failed`, never a fake success |
-| Webhook trust | Exotel does not sign voice callbacks → URL secret token (constant time) + optional IP allow-list + AccountSid + known-call check; no invented signature |
-| Ordering | `CallStatus::canTransitionTo` forward-only; facts filled once; `call_events.dedupe_key` unique |
-| Visibility | Call tier AND lead visibility; historical agent kept, but access follows the current lead owner |
-| Recordings | Provider URL encrypted, never sent to the browser; CRM proxy with Range; listen and download are separate permissions; download off by default |
-| Browser credentials | Per-agent identity, issued on demand (`no-store`), kept in memory only; no shared SIP account |
-| Fake provider | Local/testing only; throws elsewhere; simulator routes 404 |
-| Export | None: no call CSV, no bulk recording download, no ZIP |
+- **Migration** `2026_10_01_100000_remove_telephony_module` drops `call_recordings`, `call_events`, `calls`, `call_dispositions`, `telephony_users`, `telephony_numbers` and `telephony_integrations` (no other table had a foreign key into them). It also deletes the `call.*` permission rows with their role and user links, the `telephony.*` settings, the `C:CALL` number sequences and stored missed-call notifications, then bumps the permission cache version. The historical create migration is left unchanged. `down()` recreates empty tables only.
+- **Removed code:** `App\Services\Telephony`, call controllers, requests, policy, presenter, jobs, notifications, models, enums, `CallsReport` / `CallMetrics`, the two telephony maintenance commands and their schedules, the calls and telephony-webhook route files, the telephony config file, the telephony rate limiters, the telephony and provider env keys, the Calls pages, the softphone widget and composable, the Telephony admin page and the telephony feature test folder.
+- **Kept:** lead phone fields (`phone`, `alternate_phone`, `normalized_phone`) and plain `tel:` links, follow-ups (including the "Call" follow-up type and "Call back later" outcome), meetings, lead status updates, notes, activities, Facebook, reports and Web Push.
+- **History:** `audit_logs` rows with call and telephony actions (for example `CALL_STARTED`) stay viewable (the action column is a plain string). Lead activities of type `call_*` stay on the timeline with a generic icon. Old database notifications that carry a `call_id` render as "no longer available".
+- **Recordings:** files archived under `storage/app/private/call-recordings/` are not deleted automatically. Back them up if they must be retained, then delete the directory manually ([OPERATIONS.md](OPERATIONS.md)).
+- **Security:** `Permissions-Policy` is `microphone=()`; the calling provider's hosts were removed from the CSP without loosening any other directive. `app:production-check` and `crm:production-data-check` no longer check telephony.
+- **Tests:** `tests/Feature/TelephonyRemovalTest.php` asserts that no route, command, schedule, table, permission, setting, audit action or navigation entry remains, that lead phone fields exist, that legacy history still renders and that the migration removes only telephony rows.
 ### Phase 7 deliverables (implemented)
 
 Behaviour details and the metric dictionary: [REPORTING_MODULE.md](REPORTING_MODULE.md).
 
 - **Migration** (`2026_09_24_600001`, additive): `lead_status_changes` (status history, backfilled from activities), `report_exports` (private, expiring export files) and an index on `lead_assignments.created_at`. It also grants `report.view` to the Sales Executive role.
 - **Hooks:** `LeadService` writes a `lead_status_changes` row on creation and on every status change. Nothing else in Phases 1–6 was redesigned.
-- **Services** (`App\Services\Reports`): `ReportScope` (tier + module visibility), `ReportFilters` (presets, CRM timezone, previous period, scope-checked filters), `ReportQueries`, `ReportSql` (driver-aware SQL, percentiles), `ReportLookups`, `ReportLinks` (drill-downs), `ReportRegistry`, `ReportService` (pages, dashboard KPIs, throttled `REPORT_VIEWED`), `ReportExportService`; metric services `LeadMetrics`, `ConversionMetrics`, `ResponseMetrics`, `CallMetrics`, `FollowupMetrics`, `MeetingMetrics`, `PipelineMetrics`, `AssignmentMetrics`, `ActivityMetrics`; 15 report definitions.
+- **Services** (`App\Services\Reports`): `ReportScope` (tier + module visibility), `ReportFilters` (presets, CRM timezone, previous period, scope-checked filters), `ReportQueries`, `ReportSql` (driver-aware SQL, percentiles), `ReportLookups`, `ReportLinks` (drill-downs), `ReportRegistry`, `ReportService` (pages, dashboard KPIs, throttled `REPORT_VIEWED`), `ReportExportService`; metric services `LeadMetrics`, `ConversionMetrics`, `ResponseMetrics`, `FollowupMetrics`, `MeetingMetrics`, `PipelineMetrics`, `AssignmentMetrics`, `ActivityMetrics`; 13 report definitions.
 - **HTTP:** `Reports\ReportController`, `ReportExportController`, `routes/reports.php`, job `GenerateReportExport`, command `reports:prune-exports` (hourly). Module visibility services gained an opt-in `includeArchivedLeads` flag for historical reporting.
 - **UI:** `Reports/Index` (report centre), `Reports/Show` (generic section renderer, sticky filter bar with URL state, KPI grid with comparison, lazy Chart.js charts, dense tables with drill-downs, My exports), dashboard KPI strip, sidebar Reports group.
 - **Settings:** group `report` (qualified status, response target, neglect thresholds, export queue threshold, export retention).
@@ -744,7 +694,7 @@ This is a controlled enhancement. No business workflow changed, there is no new 
   - `App\Support\LeadValue` gates `LeadRequest` (the value isn't accepted), `LeadPresenter` / `LeadController` props, and report output (`ReportService::page` / `dashboard` and `ReportExportService`). Currency KPIs, charts and columns are stripped centrally, so screens and CSV always match.
   - `leads.estimated_value` and its data are unchanged. See [LEAD_MODULE.md](LEAD_MODULE.md) and [REPORTING_MODULE.md](REPORTING_MODULE.md).
 - **Company branding.**
-  - `BrandingService` stores on the `branding` disk (`storage/app/branding`, separate from private attachments and recordings).
+  - `BrandingService` stores on the `branding` disk (`storage/app/branding`, separate from private attachments and exports).
   - Settings `branding.logo_path` and `branding.favicon_path` are written through `SettingService::put`. The company name reuses `general.company_name`, and changing it is audited as `COMPANY_NAME_CHANGED`.
   - Admin routes: `POST|DELETE /admin/branding/{logo|favicon}` (`settings.manage`). Public route: `GET /branding/{logo|favicon}?v=` (content-hash versioned; the favicon falls back to a generated initials SVG).
   - UI: a Branding section in General settings (`BrandingAsset.vue`) and `BrandMark.vue` on the login page and sidebar. `#crm-favicon` is in `app.blade.php` and kept in sync on Inertia navigation.
@@ -771,12 +721,12 @@ This is a controlled enhancement. No business workflow changed, there is no new 
 
 No business workflow, role or report metric changed, and no migration was added.
 
-- **Commands:** `app:production-check` (PASS/WARN/FAIL for environment, debug, HTTPS, caches, timezone, MySQL strict/utf8mb4, queue, scheduler heartbeat, mail, storage, sessions, logging, Meta, Exotel, VAPID, demo accounts; never prints values), `crm:create-super-admin` (interactive, prompted password ≥ 12 with mixed case/number/symbol, audited), `crm:seed-performance` (local/testing only, `PERF-` rows, `--purge`).
-- **Guards:** demo seeders use `Database\Seeders\Concerns\LocalDemoOnly` (exception outside local/testing); `DatabaseSeeder` seeds system data only in production; fake telephony stays local/testing only.
-- **HTTP:** `SecurityHeaders` sends a per-request nonce CSP (`config/security.php`, Exotel/Meta origins, `CSP_REPORT_ONLY`), HSTS on HTTPS, `Permissions-Policy` allowing the microphone for same-origin WebRTC. `config/cors.php` allows no cross-origin access. `TRUSTED_PROXIES` and forced https URLs in production. Local disk `serve` is off (private files only through authorised controllers).
+- **Commands:** `app:production-check` (PASS/WARN/FAIL for environment, debug, HTTPS, caches, timezone, MySQL strict/utf8mb4, queue, scheduler heartbeat, mail, storage, sessions, logging, Meta, VAPID, demo accounts; never prints values), `crm:create-super-admin` (interactive, prompted password ≥ 12 with mixed case/number/symbol, audited), `crm:seed-performance` (local/testing only, `PERF-` rows, `--purge`).
+- **Guards:** demo seeders use `Database\Seeders\Concerns\LocalDemoOnly` (exception outside local/testing); `DatabaseSeeder` seeds system data only in production.
+- **HTTP:** `SecurityHeaders` sends a per-request nonce CSP (`config/security.php`, Meta/Firebase origins, `CSP_REPORT_ONLY`), HSTS on HTTPS, `Permissions-Policy` denying camera, microphone, geolocation, payment and USB. `config/cors.php` allows no cross-origin access. `TRUSTED_PROXIES` and forced https URLs in production. Local disk `serve` is off (private files only through authorised controllers).
 - **Health:** `GET /health` (`HealthController`, `throttle:health`) replaces `/up`; returns only ok/fail for app, database and cache.
 - **Errors:** static Blade `errors/{403,404,419,429,500,503}` (no build assets, used for maintenance mode and when Inertia cannot render) plus the Inertia `Error` page; no stack traces with `APP_DEBUG=false`.
 - **Scheduler:** `scheduler-heartbeat` every minute; every scheduled task uses `withoutOverlapping`.
 - **Config:** `.env.example` is production-safe and sectioned; `DB_TIMEZONE`, secure session cookie by default in production, password minimum 12; `config('crm.version') = 1.0.0` shown in System settings.
 - **Docs:** [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md), [OPERATIONS.md](OPERATIONS.md), [UAT_CHECKLIST.md](UAT_CHECKLIST.md), [SECURITY.md](SECURITY.md) (Phase 8 hardening and CSP).
-- **Tests:** `tests/Feature/Phase8` (production guard, demo seeder block, fake telephony block, debug/error pages, private files, export expiry, health, role regression, route inventory, config exposure, security headers).
+- **Tests:** `tests/Feature/Phase8` (production guard, demo seeder block, debug/error pages, private files, export expiry, health, role regression, route inventory, config exposure, security headers).

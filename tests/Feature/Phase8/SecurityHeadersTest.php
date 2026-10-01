@@ -1,7 +1,7 @@
 <?php
 
 /*
-| Phase 8 §18–20: security headers, CSP compatible with Meta / Exotel /
+| Phase 8 §18–20: security headers, CSP compatible with Meta / Firebase /
 | audio / Vue assets, no wildcard sources, and no CORS for the session app.
 */
 
@@ -49,22 +49,15 @@ test('no directive allows every origin', function () {
     }
 });
 
-test('the CSP allows the integrations the CRM needs', function () {
-    config(['telephony.exotel.webrtc_sdk_url' => 'https://sdk.exotel.example/crm-web-sdk.js']);
+test('the CSP allows the integrations the CRM needs and nothing for calling providers', function () {
     $csp = cspOf($this->get('/login'));
 
-    expect($csp['script-src'])->toContain('https://sdk.exotel.example')
-        ->and($csp['connect-src'])->toContain('wss://*.exotel.com')
-        ->and($csp['media-src'])->toContain("'self'")->toContain('blob:')
+    expect($csp['media-src'])->toContain("'self'")->toContain('blob:')
         ->and($csp['form-action'])->toContain('https://www.facebook.com')
         ->and($csp['font-src'])->toContain('https://fonts.bunny.net')
-        ->and($csp['worker-src'])->toContain("'self'");
-});
-
-test('an insecure SDK URL is never added to script-src', function () {
-    config(['telephony.exotel.webrtc_sdk_url' => 'http://sdk.exotel.example/sdk.js']);
-
-    expect(cspOf($this->get('/login'))['script-src'])->not->toContain('http://sdk.exotel.example');
+        ->and($csp['worker-src'])->toContain("'self'")
+        ->and($csp['connect-src'])->not->toContain('wss:')
+        ->and($csp['script-src'])->each->not->toStartWith('https://sdk.');
 });
 
 test('report-only mode sends the report-only header instead', function () {
@@ -75,14 +68,14 @@ test('report-only mode sends the report-only header instead', function () {
         ->and($response->headers->get('Content-Security-Policy-Report-Only'))->toContain("default-src 'self'");
 });
 
-test('baseline headers are present and allow the microphone for browser calling only on this origin', function () {
+test('baseline headers are present and deny microphone and camera access', function () {
     $response = $this->get('/login');
 
     $response->assertHeader('X-Frame-Options', 'SAMEORIGIN')
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
         ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    expect($response->headers->get('Permissions-Policy'))->toContain('microphone=(self)')->toContain('camera=()');
+    expect($response->headers->get('Permissions-Policy'))->toContain('microphone=()')->toContain('camera=()');
 });
 
 test('HSTS is sent on HTTPS requests', function () {

@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Services\Followups\FollowupVisibility;
 use App\Services\Leads\LeadVisibility;
 use App\Services\Meetings\MeetingVisibility;
-use App\Services\Telephony\CallVisibility;
 use App\Support\Permissions;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,8 +15,8 @@ use Illuminate\Support\Collection;
  * The single gate every report query goes through.
  *
  * A report row is visible only when BOTH hold:
- *  1. the operational module visibility (LeadVisibility, CallVisibility,
- *     FollowupVisibility, MeetingVisibility) allows the underlying record, and
+ *  1. the operational module visibility (LeadVisibility, FollowupVisibility,
+ *     MeetingVisibility) allows the underlying record, and
  *  2. the report tier caps it: report.view_all → no cap (company),
  *     report.view → the viewer's own records only.
  *
@@ -35,7 +34,6 @@ final class ReportScope
         public readonly User $user,
         public readonly string $tier,
         private readonly LeadVisibility $leadVisibility,
-        private readonly CallVisibility $callVisibility,
         private readonly FollowupVisibility $followupVisibility,
         private readonly MeetingVisibility $meetingVisibility,
     ) {}
@@ -54,7 +52,7 @@ final class ReportScope
     {
         $tier = self::tierFor($user) ?? throw new AuthorizationException('You do not have permission to view reports.');
 
-        return new self($user, $tier, app(LeadVisibility::class), app(CallVisibility::class),
+        return new self($user, $tier, app(LeadVisibility::class),
             app(FollowupVisibility::class), app(MeetingVisibility::class));
     }
 
@@ -83,13 +81,6 @@ final class ReportScope
         $this->leadVisibility->apply($query, $this->user);
 
         return $this->cap($query, 'leads.assigned_to');
-    }
-
-    public function calls(Builder $query, bool $withArchivedLeads = true): Builder
-    {
-        $this->callVisibility->apply($query, $this->user, $withArchivedLeads);
-
-        return $this->cap($query, 'calls.agent_user_id');
     }
 
     public function followups(Builder $query, bool $withArchivedLeads = true): Builder

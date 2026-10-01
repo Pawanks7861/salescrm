@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 /*
-| Phase 8 §41–42: attachments, recordings and exports live on the private
+| Phase 8 §41–42: attachments and exports live on the private
 | disk and are only reachable through authorising controllers.
 */
 
@@ -49,11 +49,6 @@ test('attachment downloads require login, permission and lead visibility', funct
     $this->actingAs($this->org->manager)->get($url)->assertForbidden();
     $viewer = setPermission($this->org->manager, 'lead.view_all');
     $this->actingAs($viewer)->get($url)->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
-});
-
-test('recording routes require authentication', function () {
-    $this->get('/calls/1/recording')->assertRedirect('/login');
-    $this->get('/calls/1/recording/download')->assertRedirect('/login');
 });
 
 test('branding files are only served through the branding controller', function () {

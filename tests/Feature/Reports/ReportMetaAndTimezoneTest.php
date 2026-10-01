@@ -68,21 +68,6 @@ test('N: day boundaries follow the CRM timezone, not UTC (§99)', function () {
     expect(reportKpi(reportProps($this, $org->rahul, 'overview', ['preset' => 'this_month']), 'sales', 'new_leads'))->toBe(3);
 });
 
-test('N: a call crossing midnight belongs to the local day it started', function () {
-    $org = salesOrg();
-    telephonySetup([$org->rahul]);
-    $this->travelTo(CarbonImmutable::parse('2026-09-14 23:58', 'Asia/Kolkata'));
-    $lead = reportLead($org->rahul);
-    $call = startCall($lead, $org->rahul);
-
-    $this->travelTo(CarbonImmutable::parse('2026-09-15 00:05', 'Asia/Kolkata'));
-    finishCall($this, $call, 'completed', 400);
-
-    $this->travelTo(CarbonImmutable::parse('2026-09-15 10:00', 'Asia/Kolkata'));
-    expect(reportKpi(reportProps($this, $org->rahul, 'calls', ['preset' => 'yesterday']), 'summary', 'total'))->toBe(1)
-        ->and(reportKpi(reportProps($this, $org->rahul, 'calls', ['preset' => 'today']), 'summary', 'total'))->toBe(0);
-});
-
 test('invalid custom ranges fall back to the default preset', function () {
     $org = salesOrg();
     $this->travelTo(CarbonImmutable::parse('2026-09-15 10:00', 'Asia/Kolkata'));

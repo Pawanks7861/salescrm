@@ -52,7 +52,6 @@ final class Navigation
                 ['label' => 'Leads', 'route' => 'leads.index', 'icon' => 'users', 'active' => ['leads.index', 'leads.show', 'leads.create', 'leads.edit'], 'permissions' => [$P::LEAD_VIEW, $P::LEAD_VIEW_ALL]],
                 ['label' => 'Follow-ups', 'route' => 'followups.index', 'icon' => 'followup', 'active' => 'followups.*', 'permissions' => [$P::FOLLOWUP_VIEW, $P::FOLLOWUP_VIEW_ALL]],
                 ['label' => 'Meetings', 'route' => 'meetings.index', 'icon' => 'video', 'active' => 'meetings.*', 'permissions' => [$P::MEETING_VIEW, $P::MEETING_VIEW_ALL]],
-                ['label' => 'Calls', 'route' => 'calls.index', 'icon' => 'phone-call', 'active' => 'calls.*', 'permissions' => [$P::CALL_VIEW, $P::CALL_VIEW_ALL]],
                 ['label' => 'Calendar', 'route' => 'calendar.index', 'icon' => 'calendar', 'active' => 'calendar.*', 'permissions' => [$P::MEETING_VIEW, $P::MEETING_VIEW_ALL]],
             ]],
             ['title' => 'Sales', 'items' => [
@@ -69,9 +68,7 @@ final class Navigation
                 ['label' => 'Users', 'route' => 'admin.users.index', 'icon' => 'user', 'active' => 'admin.users.*', 'permissions' => [$P::USER_VIEW]],
             ]],
             ['title' => 'Integrations', 'items' => [
-                ['label' => 'Facebook', 'route' => 'admin.integrations.facebook.index', 'icon' => 'facebook', 'active' => 'admin.integrations.facebook.*', 'permissions' => [$P::FACEBOOK_MANAGE]],
-                ['label' => 'Telephony', 'route' => 'admin.integrations.telephony.index', 'icon' => 'headset', 'active' => 'admin.integrations.telephony.*', 'permissions' => [$P::CALL_CONFIGURE]],
-            ]],
+                ['label' => 'Facebook', 'route' => 'admin.integrations.facebook.index', 'icon' => 'facebook', 'active' => 'admin.integrations.facebook.*', 'permissions' => [$P::FACEBOOK_MANAGE]],            ]],
             ['title' => 'Administration', 'items' => [
                 ['label' => 'Roles & Permissions', 'route' => 'admin.roles.index', 'icon' => 'shield', 'active' => 'admin.roles.*', 'permissions' => [$P::ROLE_VIEW]],
                 ['label' => 'Lead Settings', 'route' => 'admin.lead-settings.index', 'icon' => 'tag', 'active' => 'admin.lead-settings.*', 'permissions' => [$P::LEAD_CONFIGURE]],

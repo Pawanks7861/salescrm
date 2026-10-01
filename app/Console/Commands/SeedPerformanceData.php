@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 /**
  * Local/staging-copy performance dataset (Phase 8 §66). Bulk-inserts leads,
- * follow-ups, meetings and calls spread over the active sales users so list
+ * follow-ups and meetings spread over the active sales users so list
  * pages, dashboards, calendars and reports can be timed at realistic volume.
  * Every row is tagged with the PERF- prefix; --purge removes only those rows.
  * Refuses to run outside local/testing.
@@ -26,7 +26,7 @@ class SeedPerformanceData extends Command
     private const CHUNK = 1000;
 
     protected $signature = 'crm:seed-performance
-        {--leads=5000} {--followups=10000} {--meetings=5000} {--calls=20000}
+        {--leads=5000} {--followups=10000} {--meetings=5000}
         {--purge : Delete previously generated PERF- rows instead of creating}';
 
     protected $description = 'Generate (or purge) a tagged performance-test dataset. Local/testing only.';
@@ -67,14 +67,13 @@ class SeedPerformanceData extends Command
         ));
         $this->followups((int) $this->option('followups'), $leadIds, $followupTypeIds, $now);
         $this->meetings((int) $this->option('meetings'), $runId, $leadIds, $meetingTypeIds, $now);
-        $this->calls((int) $this->option('calls'), $runId, $leadIds, $now);
 
         $this->info(sprintf('Performance dataset created in %.1fs (run %s).', microtime(true) - $started, $runId));
 
         return self::SUCCESS;
     }
 
-    /** @return array<int, array{id: int, user: ?int, phone: string}> */
+    /** @return array<int, array{id: int, user: ?int}> */
     private function leads(int $count, string $runId, array $users, array $sourceIds, array $statusIds, Carbon $now): array
     {
         $priorities = ['low', 'medium', 'medium', 'high', 'urgent'];
@@ -112,8 +111,8 @@ class SeedPerformanceData extends Command
         $this->newLine();
 
         return DB::table('leads')->where('lead_number', 'like', self::PREFIX.$runId.'-%')
-            ->get(['id', 'assigned_to', 'normalized_phone'])
-            ->map(fn ($l) => ['id' => $l->id, 'user' => $l->assigned_to, 'phone' => $l->normalized_phone])
+            ->get(['id', 'assigned_to'])
+            ->map(fn ($l) => ['id' => $l->id, 'user' => $l->assigned_to])
             ->all();
     }
 
@@ -179,42 +178,6 @@ class SeedPerformanceData extends Command
         );
     }
 
-    private function calls(int $count, string $runId, array $leads, Carbon $now): void
-    {
-        $outcomes = ['completed', 'completed', 'completed', 'no_answer', 'busy', 'failed', 'missed'];
-
-        $this->bulk('calls', $count, function (int $n) use ($leads, $now, $runId, $outcomes) {
-            $lead = $leads[$n % count($leads)];
-            $started = $now->copy()->subMinutes(random_int(0, 60 * 24 * 180));
-            $status = $outcomes[$n % count($outcomes)];
-            $talk = $status === 'completed' ? random_int(15, 900) : 0;
-
-            return [
-                'call_number' => self::PREFIX.$runId.'-C'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
-                'client_reference' => (string) Str::uuid(),
-                'lead_id' => $lead['id'],
-                'agent_user_id' => $lead['user'],
-                'provider' => 'fake',
-                'provider_call_id' => self::PREFIX.$runId.'-'.$n,
-                'direction' => $status === 'missed' ? 'inbound' : 'outbound',
-                'channel' => 'pstn',
-                'contact_field' => 'phone',
-                'to_number' => $lead['phone'],
-                'to_number_normalized' => $lead['phone'],
-                'customer_number_normalized' => $lead['phone'],
-                'status' => $status,
-                'started_at' => $started,
-                'answered_at' => $talk ? $started->copy()->addSeconds(10) : null,
-                'ended_at' => $started->copy()->addSeconds(10 + $talk),
-                'talk_duration_seconds' => $talk,
-                'total_duration_seconds' => 10 + $talk,
-                'requires_disposition' => $talk > 0,
-                'created_at' => $started,
-                'updated_at' => $started,
-            ];
-        });
-    }
-
     private function bulk(string $table, int $count, callable $row): void
     {
         $bar = $this->output->createProgressBar($count);
@@ -238,7 +201,6 @@ class SeedPerformanceData extends Command
             $meetingIds = DB::table('meetings')->where('meeting_number', 'like', $like)->pluck('id');
 
             return [
-                'calls' => DB::table('calls')->where('call_number', 'like', $like)->delete(),
                 'meeting_participants' => DB::table('meeting_participants')->whereIn('meeting_id', $meetingIds)->delete(),
                 'meetings' => DB::table('meetings')->whereIn('id', $meetingIds)->delete(),
                 'followups' => DB::table('followups')->where('title', 'like', $like)->whereIn('lead_id', $leadIds)->delete(),

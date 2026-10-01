@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\Meeting;
@@ -98,25 +97,23 @@ class NotificationController extends Controller
     {
         $followupIds = $notifications->map(fn ($n) => $n->data['followup_id'] ?? null)->filter()->unique()->values();
         $meetingIds = $notifications->map(fn ($n) => $n->data['meeting_id'] ?? null)->filter()->unique()->values();
-        $callIds = $notifications->map(fn ($n) => $n->data['call_id'] ?? null)->filter()->unique()->values();
         $leadIds = $notifications->filter(fn ($n) => empty($n->data['followup_id']) && empty($n->data['meeting_id']) && empty($n->data['call_id']))->map(fn ($n) => $n->data['lead_id'] ?? null)->filter()->unique()->values();
 
         $visibleFollowups = $followupIds->isEmpty() ? collect() : Followup::query()->visibleTo($user)->whereIn('followups.id', $followupIds)->pluck('followups.id')->flip();
         $visibleMeetings = $meetingIds->isEmpty() ? collect() : Meeting::query()->visibleTo($user)->whereIn('meetings.id', $meetingIds)->pluck('meetings.id')->flip();
-        $visibleCalls = $callIds->isEmpty() ? collect() : Call::query()->visibleTo($user)->whereIn('calls.id', $callIds)->pluck('calls.id')->flip();
         $visibleLeads = $leadIds->isEmpty() ? collect() : Lead::query()->visibleTo($user)->whereIn('leads.id', $leadIds)->pluck('leads.id')->flip();
 
-        return $notifications->map(function (DatabaseNotification $n) use ($visibleFollowups, $visibleMeetings, $visibleCalls, $visibleLeads) {
+        return $notifications->map(function (DatabaseNotification $n) use ($visibleFollowups, $visibleMeetings, $visibleLeads) {
             $data = $n->data;
             $followupId = $data['followup_id'] ?? null;
             $meetingId = $data['meeting_id'] ?? null;
-            $callId = $data['call_id'] ?? null;
             $leadId = $data['lead_id'] ?? null;
 
             [$stale, $target] = match (true) {
                 (bool) $followupId => [! $visibleFollowups->has($followupId), route('followups.show', $followupId, false)],
                 (bool) $meetingId => [! $visibleMeetings->has($meetingId), route('meetings.show', $meetingId, false)],
-                (bool) $callId => [! $visibleCalls->has($callId), route('calls.show', $callId, false)],
+                // Legacy call notifications: the calling module was removed, so there is nothing to open.
+                ! empty($data['call_id']) => [true, null],
                 (bool) $leadId => [! $visibleLeads->has($leadId), route('leads.show', $leadId, false)],
                 default => [false, null],
             };

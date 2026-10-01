@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports;
 
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\Meeting;
@@ -45,21 +44,6 @@ final class ReportLinks
     public function lead(int $id): ?string
     {
         return $this->can('lead', Lead::class) ? route('leads.show', $id) : null;
-    }
-
-    public function calls(array $params = [], bool $period = true): ?string
-    {
-        if (! $this->can('call', Call::class)) {
-            return null;
-        }
-        $f = $this->q->filters;
-
-        return route('calls.index', array_filter([
-            'from' => $period ? $f->fromDay() : null,
-            'to' => $period ? $f->toDay() : null,
-            'agent' => $f->userId,
-            ...$params,
-        ], fn ($v) => $v !== null && $v !== '' && $v !== []));
     }
 
     public function followups(array $params = [], bool $period = true): ?string

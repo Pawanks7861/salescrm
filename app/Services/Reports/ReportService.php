@@ -4,7 +4,6 @@ namespace App\Services\Reports;
 
 use App\Enums\AuditAction;
 use App\Enums\LeadPriority;
-use App\Models\Call;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\AuditService;
@@ -103,14 +102,6 @@ class ReportService
             Metric::kpi('pipeline', 'Open pipeline', Metric::money($pipeline->value ?? 0), 'currency', 'Estimated value of open leads now.', snapshot: true, link: $links->report('pipeline')),
             Metric::kpi('response', 'Median first response', $response['median_attempt'], 'duration', 'Leads created this month: creation → first response attempt.', higherIsBetter: false, link: $links->report('response-time')),
         ];
-
-        if ($user->can('viewAny', Call::class)) {
-            $calls = app(Metrics\CallMetrics::class);
-            $c = $calls->summary($q);
-            $pc = $calls->summary($p);
-            $kpis[] = Metric::kpi('calls', 'Calls', $c['total'], 'number', 'Calls this month.', $pc['total'], link: $links->report('calls'));
-            $kpis[] = Metric::kpi('connection_rate', 'Connection rate', $c['connection_rate'], 'percent', 'Connected ÷ finished outbound calls.', $pc['connection_rate']);
-        }
 
         return [
             'scope' => $q->scope->label(),

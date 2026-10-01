@@ -96,7 +96,7 @@ class AgeingReport extends ReportDefinition
         ], $statusRows, null, 'No open leads.', 'Days since the lead\'s last status change.');
 
         $sections[] = $this->kpis('neglect', 'Neglected lead rules', [
-            Metric::kpi('untouched', PipelineMetrics::NEGLECT_REASONS['untouched'], (int) ($n->untouched ?? 0), 'number', 'Created more than '.$this->pipeline->untouchedHours().' hours ago with no call, completed follow-up or meeting (setting report.untouched_new_lead_hours).', snapshot: true, higherIsBetter: false),
+            Metric::kpi('untouched', PipelineMetrics::NEGLECT_REASONS['untouched'], (int) ($n->untouched ?? 0), 'number', 'Created more than '.$this->pipeline->untouchedHours().' hours ago with no completed follow-up or meeting (setting report.untouched_new_lead_hours).', snapshot: true, higherIsBetter: false),
             Metric::kpi('overdue', PipelineMetrics::NEGLECT_REASONS['overdue'], (int) ($n->overdue ?? 0), 'number', 'At least one pending follow-up past its time.', snapshot: true, higherIsBetter: false),
             Metric::kpi('no_next_action', PipelineMetrics::NEGLECT_REASONS['no_next_action'], (int) ($n->no_next_action ?? 0), 'number', 'No pending follow-up and no open meeting ahead.', snapshot: true, higherIsBetter: false),
             Metric::kpi('inactive', PipelineMetrics::NEGLECT_REASONS['inactive'], (int) ($n->inactive ?? 0), 'number', 'Not contacted in the last '.$this->pipeline->inactiveDays().' days (setting report.inactive_days).', snapshot: true, higherIsBetter: false),

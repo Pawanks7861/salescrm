@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports;
 
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\LeadAssignment;
@@ -18,7 +17,6 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Attribution (documented in docs/REPORTING_MODULE.md):
  *  - lead metrics        → the lead's CURRENT owner
- *  - calls               → the agent recorded on the call
  *  - follow-ups          → the assignee recorded on the follow-up
  *  - meetings            → the host recorded on the meeting
  */
@@ -80,14 +78,6 @@ final class ReportQueries
             ->whereIn('lead_enquiries.lead_id', $this->leads()->select('leads.id'));
     }
 
-    public function calls(): Builder
-    {
-        $f = $this->filters;
-
-        return $this->activity($this->scope->calls(Call::query(), $f->includeArchived), 'calls', nullableLead: true)
-            ->when($f->userId, fn (Builder $q, $v) => $q->where('calls.agent_user_id', $v));
-    }
-
     public function followups(): Builder
     {
         $f = $this->filters;
@@ -104,7 +94,7 @@ final class ReportQueries
             ->when($f->userId, fn (Builder $q, $v) => $q->where('meetings.host_user_id', $v));
     }
 
-    /** Lead-attribute filters and archived handling for call / follow-up / meeting queries. */
+    /** Lead-attribute filters and archived handling for follow-up / meeting queries. */
     private function activity(Builder $query, string $table, bool $nullableLead): Builder
     {
         $f = $this->filters;

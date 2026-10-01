@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Presenters\CallPresenter;
 use App\Http\Presenters\FollowupPresenter;
 use App\Http\Presenters\MeetingPresenter;
 use App\Models\AuditLog;
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\LeadAssignment;
@@ -22,8 +20,6 @@ use App\Services\Meetings\MeetingMetrics;
 use App\Services\Meetings\MeetingVisibility;
 use App\Services\Meta\MetaIntegrationService;
 use App\Services\Reports\ReportService;
-use App\Services\Telephony\CallQueryService;
-use App\Services\Telephony\CallVisibility;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -78,7 +74,6 @@ class DashboardController extends Controller
             'sales' => $this->sales($user),
             'meetings' => $this->meetings($user),
             'facebook' => $this->facebook($user),
-            'calls' => $this->calls($user),
             'reportKpis' => app(ReportService::class)->dashboard($user),
             'lastLogin' => LoginHistory::where('user_id', $user->id)
                 ->where('event', 'login')
@@ -170,32 +165,6 @@ class DashboardController extends Controller
                 'lostReasons' => $this->leadOptions->lostReasons(),
                 'canChangeLeadStatus' => $user->hasPermission(Permissions::LEAD_CHANGE_STATUS),
             ],
-        ];
-    }
-
-    /**
-     * Call widgets scoped by CallVisibility: own calls for sales users, all
-     * calls for view_all. Local data only.
-     */
-    private function calls(User $user): ?array
-    {
-        if (! $user->can('viewAny', Call::class)) {
-            return null;
-        }
-
-        $tier = app(CallVisibility::class)->tier($user);
-        $awaiting = Call::query()->visibleTo($user)->awaitingDisposition()
-            ->when($tier === CallVisibility::OWN, fn ($q) => $q->where('calls.agent_user_id', $user->id))
-            ->with(CallPresenter::ROW_WITH)
-            ->orderByDesc('calls.started_at')
-            ->limit(5)
-            ->get()
-            ->map(fn (Call $c) => app(CallPresenter::class)->row($c, $user));
-
-        return [
-            'scope' => $tier === CallVisibility::ALL ? 'Company' : 'My',
-            'counts' => app(CallQueryService::class)->counters($user, false),
-            'awaiting' => $awaiting->values(),
         ];
     }
 
