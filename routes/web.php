@@ -33,9 +33,11 @@ Route::middleware(['auth', 'active', 'office', 'throttle:crm'])->group(function 
     Route::delete('/fcm-tokens', [FcmTokenController::class, 'destroy'])->middleware('throttle:sensitive')->name('fcm-tokens.destroy');
 
     require __DIR__.'/leads.php';
+    require __DIR__.'/batches.php';
     require __DIR__.'/followups.php';
     require __DIR__.'/meetings.php';
     require __DIR__.'/reports.php';
+    require __DIR__.'/chat.php';
 });
 
 require __DIR__.'/auth.php';

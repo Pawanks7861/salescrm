@@ -55,6 +55,6 @@ test('production seeding creates system data only, with no users and no demo dat
 
     expect(User::count())->toBe(0)
         ->and(Lead::withTrashed()->count())->toBe(0)
-        ->and(Role::where('is_system', true)->count())->toBe(4)
+        ->and(Role::where('is_system', true)->count())->toBe(5)
         ->and(Setting::count())->toBeGreaterThan(0);
 });

@@ -62,4 +62,9 @@ class UserFactory extends Factory
     {
         return $this->role('sales_executive');
     }
+
+    public function trainer(): static
+    {
+        return $this->role(User::TRAINER_ROLE);
+    }
 }

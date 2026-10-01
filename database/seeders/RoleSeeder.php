@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\User;
 use App\Services\PermissionRegistrar;
 use App\Support\Permissions as P;
 use Illuminate\Database\Seeder;
@@ -20,15 +21,18 @@ class RoleSeeder extends Seeder
     {
         $salesExecutive = [
             P::LEAD_VIEW, P::LEAD_CREATE, P::LEAD_EDIT, P::LEAD_CHANGE_STATUS,
+            P::BATCH_VIEW, P::BATCH_MANAGE_LEADS,
             P::FOLLOWUP_VIEW, P::FOLLOWUP_CREATE, P::FOLLOWUP_EDIT, P::FOLLOWUP_COMPLETE, P::FOLLOWUP_CANCEL,
             P::MEETING_VIEW, P::MEETING_CREATE, P::MEETING_EDIT, P::MEETING_CANCEL, P::MEETING_COMPLETE,
             P::FILE_VIEW, P::FILE_UPLOAD,
             P::REPORT_VIEW,
+            P::CHAT_USE,
         ];
 
         $salesManager = [
             ...$salesExecutive,
             P::LEAD_ASSIGN, P::LEAD_REASSIGN, P::LEAD_EDIT_SOURCE,
+            P::BATCH_CREATE, P::BATCH_EDIT, P::BATCH_MANAGE_TRAINERS,
             P::FOLLOWUP_DELETE, P::FOLLOWUP_ASSIGN,
             P::MEETING_OVERRIDE_CONFLICT, P::MEETING_ASSIGN, P::MEETING_CREATE_WITHOUT_LEAD,
             P::NOTE_EDIT_ANY, P::NOTE_DELETE, P::NOTE_VIEW_MANAGEMENT,
@@ -44,6 +48,9 @@ class RoleSeeder extends Seeder
             'admin' => ['name' => 'Admin', 'description' => 'Operational administration; permissions controlled by Super Admin.', 'permissions' => $admin],
             'sales_manager' => ['name' => 'Sales Manager', 'description' => 'Own records only unless granted a view-all permission; no team visibility.', 'permissions' => array_values(array_unique($salesManager))],
             'sales_executive' => ['name' => 'Sales Executive', 'description' => 'Works assigned leads only.', 'permissions' => $salesExecutive],
+            // Being assignable as a batch trainer comes from this role; batch.view lets trainers see their batches.
+            // No lead permission: a batch never widens which leads a trainer can see.
+            User::TRAINER_ROLE => ['name' => 'Trainer', 'description' => 'Can be assigned to batches as a trainer. Sees batches, not leads, by default.', 'permissions' => [P::BATCH_VIEW, P::CHAT_USE]],
         ];
     }
 

@@ -73,6 +73,7 @@ import {
     PhotoIcon,
     SpeakerXMarkIcon,
     BellSlashIcon,
+    RectangleStackIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({ name: { type: String, required: true } });
@@ -151,6 +152,7 @@ const icons = {
     'trend-down': ArrowTrendingDownIcon,
     rupee: CurrencyRupeeIcon,
     squares: SquaresPlusIcon,
+    stack: RectangleStackIcon,
 };
 
 const component = computed(() => icons[props.name] ?? InformationCircleIcon);

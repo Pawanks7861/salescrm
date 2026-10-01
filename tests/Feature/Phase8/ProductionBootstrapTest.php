@@ -48,7 +48,7 @@ describe('ProductionSeeder', function () {
         seedProduction();
 
         expect(systemCounts())->toBe($before)
-            ->and(Role::where('is_system', true)->count())->toBe(4)
+            ->and(Role::where('is_system', true)->count())->toBe(5)
             ->and(Permission::count())->toBeGreaterThan(0)
             ->and(Setting::count())->toBeGreaterThan(0);
 

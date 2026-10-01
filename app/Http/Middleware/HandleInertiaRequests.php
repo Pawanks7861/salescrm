@@ -4,10 +4,13 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use App\Services\BrandingService;
+use App\Services\Chat\ConversationService;
+use App\Services\Chat\PriorityBroadcastService;
 use App\Services\Notifications\FcmService;
 use App\Services\Notifications\WebPushService;
 use App\Services\SettingService;
 use App\Support\Navigation;
+use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -75,6 +78,10 @@ class HandleInertiaRequests extends Middleware
             'notifications' => [
                 'unread' => $user ? fn () => $user->unreadNotifications()->count() : 0,
             ],
+            'chat' => [
+                'unread' => $user ? fn () => ($user->hasPermission(Permissions::CHAT_USE) ? app(ConversationService::class)->totalUnread($user->id) : 0) : 0,
+            ],
+            'priority' => $user ? fn () => app(PriorityBroadcastService::class)->activeFor($user) : [],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

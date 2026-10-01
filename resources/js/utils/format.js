@@ -30,6 +30,18 @@ export function formatDate(value) {
     }).format(new Date(value));
 }
 
+/**
+ * Calendar date ("YYYY-MM-DD", no time) in the same style as formatDate.
+ * Formatted as-is: no timezone conversion, so 2026-10-01 is always 01 Oct 2026.
+ */
+export function formatCalendarDate(value) {
+    const match = typeof value === 'string' ? value.match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+    if (!match) return '—';
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
 /** { date: 'YYYY-MM-DD', time: 'HH:MM' } of an instant in the CRM timezone. */
 export function crmParts(value = new Date()) {
     const parts = Object.fromEntries(

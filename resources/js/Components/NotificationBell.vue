@@ -4,7 +4,7 @@ import { liveUnread } from '@/notifications/notifier';
 import { timeAgo } from '@/utils/format';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 /**
  * Header bell: unread count (shared Inertia prop) plus a dropdown of recent
@@ -19,6 +19,11 @@ const localUnread = ref(null);
 const root = ref(null);
 
 const unread = computed(() => localUnread.value ?? liveUnread.value ?? page.props.notifications?.unread ?? 0);
+
+// A newer count from the notifier (arrival, poll, or a mark-read action) supersedes the dropdown's snapshot.
+watch(liveUnread, (count) => {
+    if (count !== null) localUnread.value = null;
+});
 
 const load = async () => {
     loading.value = true;

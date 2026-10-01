@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Leads;
 
+use App\Enums\BatchStatus;
 use App\Enums\LeadPriority;
 use App\Enums\MeetingStatus;
 use App\Http\Controllers\Controller;
@@ -9,6 +10,7 @@ use App\Http\Presenters\FollowupPresenter;
 use App\Http\Presenters\LeadPresenter;
 use App\Http\Presenters\MeetingPresenter;
 use App\Http\Requests\Leads\LeadRequest;
+use App\Models\Batch;
 use App\Models\FacebookForm;
 use App\Models\FacebookPage;
 use App\Models\FacebookWebhookEvent;
@@ -49,6 +51,8 @@ class LeadController extends Controller
     private const FOLLOWUP_LIMIT = 100;
 
     private const MEETING_LIMIT = 100;
+
+    private const BATCH_FILTER_LIMIT = 500;
 
     public function __construct(
         private readonly LeadService $leads,
@@ -91,16 +95,25 @@ class LeadController extends Controller
             'unassigned' => ['nullable', 'boolean'],
             'duplicates' => ['nullable', 'boolean'],
             'archived' => ['nullable', 'in:only'],
+            'batch' => ['nullable', 'integer'],
             'sort' => ['nullable', Rule::in(LeadQueryService::SORTS)],
             'direction' => ['nullable', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'in:25,50,100'],
         ]);
 
+        $viewBatches = $user->can('viewAny', Batch::class);
+        if (! $viewBatches) {
+            unset($filters['batch']);
+        }
+
         $leads = $this->queries->filtered($user, $filters)
-            ->with(LeadPresenter::ROW_WITH)
+            ->with([...LeadPresenter::ROW_WITH, ...($viewBatches ? ['batches' => fn ($q) => $q->select('batches.id', 'batches.name')->orderBy('batches.name')] : [])])
             ->paginate($filters['per_page'] ?? 25)
             ->withQueryString()
-            ->through(fn (Lead $lead) => $this->presenter->row($lead, $user));
+            ->through(fn (Lead $lead) => [
+                ...$this->presenter->row($lead, $user),
+                ...($viewBatches ? ['batches' => $lead->batches->map(fn (Batch $b) => $b->only('id', 'name'))->values()] : []),
+            ]);
 
         return Inertia::render('Leads/Index', [
             'leads' => $leads,
@@ -116,11 +129,20 @@ class LeadController extends Controller
                 'ageBuckets' => $this->options->ageBuckets(),
                 'today' => CarbonImmutable::now(CrmTime::tz())->toDateString(),
                 'yesterday' => CarbonImmutable::now(CrmTime::tz())->subDay()->toDateString(),
+                'batches' => $viewBatches
+                    ? Batch::query()->orderByRaw('CASE WHEN status = ? THEN 1 ELSE 0 END', [BatchStatus::Archived->value])->orderBy('name')
+                        ->limit(self::BATCH_FILTER_LIMIT)->get(['id', 'name', 'status'])
+                        ->map(fn (Batch $b) => [...$b->only('id', 'name'), 'archived' => $b->isArchived()])
+                    : [],
             ],
             'can' => [
                 'create' => $user->can('create', Lead::class),
                 'seeArchived' => $this->queries->canSeeArchived($user),
                 'filterByUser' => $this->visibility->tier($user) !== LeadVisibility::OWN,
+                'viewBatches' => $viewBatches,
+                'addToBatch' => $viewBatches && $user->hasPermission(Permissions::BATCH_MANAGE_LEADS),
+                'createBatch' => $user->can('create', Batch::class),
+                'manageBatchTrainers' => $user->hasPermission(Permissions::BATCH_MANAGE_TRAINERS),
             ],
         ]);
     }
@@ -249,7 +271,19 @@ class LeadController extends Controller
                 ->map(fn (Meeting $m) => $this->meetingPresenter->row($m, $user))
             : collect();
 
+        $viewBatches = $user->can('viewAny', Batch::class);
+        $manageBatches = $viewBatches && ! $lead->trashed() && $user->hasPermission(Permissions::BATCH_MANAGE_LEADS);
+        $batches = $viewBatches
+            ? $lead->batches()->orderBy('batches.name')->get(['batches.id', 'batches.batch_number', 'batches.name', 'batches.status'])
+                ->map(fn (Batch $b) => [
+                    ...$b->only('id', 'batch_number', 'name'),
+                    'status' => $b->status->value,
+                    'archived' => $b->isArchived(),
+                ])
+            : null;
+
         return Inertia::render('Leads/Show', [
+            'batches' => $batches,
             'lead' => [
                 ...$this->presenter->row($lead, $user),
                 ...$lead->only('first_name', 'last_name', 'alternate_phone', 'designation', 'country', 'pincode', 'lost_reason_notes'),
@@ -309,6 +343,9 @@ class LeadController extends Controller
                 'downloadAttachment' => $user->can('downloadAttachment', $lead),
                 'createFollowup' => $canCreateFollowup,
                 'createMeeting' => $canCreateMeeting,
+                'manageBatches' => $manageBatches,
+                'createBatch' => $manageBatches && $user->can('create', Batch::class),
+                'manageBatchTrainers' => $manageBatches && $user->hasPermission(Permissions::BATCH_MANAGE_TRAINERS),
             ],
         ]);
     }

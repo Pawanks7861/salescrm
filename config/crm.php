@@ -32,4 +32,15 @@ return [
         'url' => 'https://buildify360.com',
     ],
 
+    /*
+    | Internal one-to-one chat. Attachments are stored on the private "local"
+    | disk and only served through the participant-checked download route.
+    */
+    'chat' => [
+        'max_attachment_kb' => (int) env('CHAT_MAX_ATTACHMENT_KB', 10240),
+        'max_attachments' => (int) env('CHAT_MAX_ATTACHMENTS', 5),
+        'max_message_length' => 5000,
+        'allowed_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'zip'],
+    ],
+
 ];

@@ -15,5 +15,11 @@ final class PushEvent
 
     public const COMMENT = 'COMMENT';
 
-    public const ALL = [self::NEW_LEAD_ASSIGNED, self::FOLLOWUP_REMINDER, self::COMMENT];
+    public const CHAT_MESSAGE = 'CHAT_MESSAGE';
+
+    public const PRIORITY_BROADCAST = 'PRIORITY_BROADCAST';
+
+    public const BATCH_ASSIGNED = 'BATCH_ASSIGNED';
+
+    public const ALL = [self::NEW_LEAD_ASSIGNED, self::FOLLOWUP_REMINDER, self::COMMENT, self::CHAT_MESSAGE, self::PRIORITY_BROADCAST, self::BATCH_ASSIGNED];
 }

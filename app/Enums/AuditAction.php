@@ -32,6 +32,22 @@ enum AuditAction: string
     case LeadAttachmentDownloaded = 'LEAD_ATTACHMENT_DOWNLOADED';
     case LeadAttachmentDeleted = 'LEAD_ATTACHMENT_DELETED';
 
+    case BatchCreated = 'BATCH_CREATED';
+    case BatchUpdated = 'BATCH_UPDATED';
+    case BatchArchived = 'BATCH_ARCHIVED';
+    case BatchDeleted = 'BATCH_DELETED';
+    case BatchLeadAdded = 'BATCH_LEAD_ADDED';
+    case BatchLeadRemoved = 'BATCH_LEAD_REMOVED';
+    case BatchLeadsBulkAdded = 'BATCH_LEADS_BULK_ADDED';
+    case BatchLeadsBulkRemoved = 'BATCH_LEADS_BULK_REMOVED';
+    case BatchTrainerAdded = 'BATCH_TRAINER_ADDED';
+    case BatchTrainerRemoved = 'BATCH_TRAINER_REMOVED';
+    case BatchTrainersBulkAdded = 'BATCH_TRAINERS_BULK_ADDED';
+    case BatchTrainersBulkRemoved = 'BATCH_TRAINERS_BULK_REMOVED';
+
+    case PriorityBroadcastSent = 'PRIORITY_BROADCAST_SENT';
+    case PriorityBroadcastAcknowledged = 'PRIORITY_BROADCAST_ACKNOWLEDGED';
+
     case AssignmentRuleCreated = 'ASSIGNMENT_RULE_CREATED';
     case AssignmentRuleUpdated = 'ASSIGNMENT_RULE_UPDATED';
     case AssignmentRuleEnabled = 'ASSIGNMENT_RULE_ENABLED';

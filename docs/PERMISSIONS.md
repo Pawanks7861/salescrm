@@ -85,6 +85,31 @@ For a lead meeting, both the host and the invitees must be able to see the lead.
 
 The telephony module and all twelve `call.*` permissions were removed. Migration `2026_10_01_100000_remove_telephony_module` deletes the permission rows together with every role grant and user override that referenced them, and bumps the permission cache version so no session keeps a stale grant. The Roles screen no longer shows a Calls group. Historical audit rows about calls remain readable to `audit.view` holders.
 
+### Batches
+
+A batch is an organisational group of leads (`batches` + `batch_leads` pivot, many-to-many). Batch permissions **never** widen lead visibility:
+
+- `batch.view` lets a user open the batch list and batch pages, but the leads, counts and status cards on them are always filtered by `LeadVisibility`. A batch's `created_by` grants nothing.
+- `batch.manage_leads` (plus `lead.view` or `lead.view_all`) allows adding and removing leads. `BatchService` re-checks **every** submitted lead id with one `Lead::visibleTo()` query. If any id is hidden or missing, the whole request is rejected with a validation error. A crafted `POST /batches/{batch}/leads` therefore cannot add hidden leads, and hidden leads cannot be removed either.
+- Membership changes only touch `batch_leads`: lead owner, status, follow-ups, meetings and notifications are never changed. Archived batches accept no new leads. Deleting a batch removes its memberships, never its leads.
+- There is no batch export.
+
+**Trainers.** A trainer is an ordinary CRM user with the system role `trainer` (no separate trainer table). Assignments live in the `batch_trainers` pivot (unique per batch + trainer).
+
+- `batch.manage_trainers` allows assigning and removing trainers: on the batch form, from the lead list's "Create New Batch", and on the batch page. Without it, any trainer field in a crafted request is answered with 403.
+- `BatchService` checks every submitted id server-side: the user must exist, be active, not be deleted, and hold the `trainer` role. Super Admin, Admin and sales users cannot be assigned. The trainer search returns active trainers only, with no email or phone.
+- Archived batches accept no new trainers, but existing ones can still be removed. Deactivated trainers keep their history and are shown as "Inactive". Removing a trainer only deletes the pivot row.
+- **A batch trainer assignment is not a lead permission override.** Being a batch's trainer grants nothing on its leads; a trainer sees only the leads their own role already allows. The default `trainer` role holds only `batch.view` and `chat.use`, so trainers see batches but no leads.
+
+### Internal chat and priority messages
+
+- `chat.use` (every default role) allows one-to-one chat with other active users who also hold `chat.use`. Every conversation, message, read, typing and attachment endpoint checks that the session user is a **participant** of that conversation. A conversation id or message id alone grants nothing. Self-chat is refused.
+- **No role can read other people's private chats**, including Admin and Super Admin. Opening someone else's conversation returns 403 and audits `ACCESS_DENIED` with the path only. Message text is never copied into the audit log.
+- Chat attachments are private files under `storage/app/private/chat/{conversation}` with UUID names. They are downloaded only through the participant-checked route, and non-images are always served as attachments, never inline.
+- Presence (`last_seen_at`, "online" = seen within 2 minutes) is only shown inside chat to users who can chat with that person. There is no public presence endpoint.
+- `priority_broadcast.send` (Admin and Super Admin by default) sends an urgent message to every active user except the sender. Recipients are snapshotted at send time.
+- `priority_broadcast.view_history` (Admin and Super Admin by default) opens the history and per-recipient read/acknowledged list. Recipients can always open their own message, and only they can mark it read or acknowledge it.
+
 ### Reports
 
 `App\Services\Reports\ReportScope` uses the same two tiers: `report.view` (own records) and `report.view_all` (company, including unassigned leads). It **ANDs** the module visibility services (`LeadVisibility`, `FollowupVisibility`, `MeetingVisibility`) with a report-tier cap on the owner columns, so `lead.view_all` alone never widens a report beyond OWN. Only `report.view_all` users get the salesperson filter. Filter options (people, cities, states) come from the same scope. Out-of-scope user ids and any `team` parameter in a request are ignored. There is no team report or team filter (`/reports/teams` returns 404). `report.export` is required for CSV exports; without it the backend returns 403 and audits `EXPORT_ATTEMPTED`. Downloads are owner-only. See [REPORTING_MODULE.md](REPORTING_MODULE.md).
@@ -116,6 +141,12 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 | | `lead.edit_source` | Change a lead's source / campaign after creation |
 | | `lead.configure` | Manage statuses, sources, lost reasons, campaigns and custom fields |
 | | `lead.assignment_rules` | Manage automatic assignment rules |
+| Batches | `batch.view` | View batches (only the leads the user can already see) |
+| | `batch.create` | Create batches |
+| | `batch.edit` | Edit batch details |
+| | `batch.delete` | Archive, restore and delete batches (leads are never deleted) |
+| | `batch.manage_leads` | Add / remove visible leads to / from batches |
+| | `batch.manage_trainers` | Assign / remove trainers on batches (active `trainer`-role users only) |
 | Follow-ups | `followup.view` | View follow-ups assigned to me or on leads I own |
 | | `followup.view_all` | View every follow-up (still limited to visible leads) |
 | | `followup.create` | Schedule follow-ups on visible leads |
@@ -146,6 +177,8 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 | Settings | `settings.view`, `settings.manage` | `settings.manage` also covers company logo / favicon upload and removal (`admin.branding.*`) and the global browser-notification and sound switches |
 | Integrations | `facebook.manage` | Connect/disconnect Meta, choose Pages, manage forms and field mapping, view and retry webhook events, backfill leads, Meta settings. Super Admin only by default |
 | Files | `file.view`, `file.upload`, `file.download` | |
+| Chat | `chat.use` | One-to-one internal chat with other `chat.use` holders (participants only; no admin read access) |
+| Priority messages | `priority_broadcast.send`, `priority_broadcast.view_history` | Send urgent team-wide messages / view history with read and acknowledgement counts |
 
 ## Default roles
 
@@ -155,6 +188,7 @@ Lead estimated value is hidden from every role while `crm.features.lead_value` i
 | Admin | `admin` | Broad operational access; **no** `role.manage`, `facebook.manage`, `lead.restore`, `user.delete` by default |
 | Sales Manager | `sales_manager` | **Own records only** (no `*.view_all`, no team visibility). It keeps explicit extras: `lead.assign` / `lead.reassign` / `lead.edit_source`, `followup.assign` / `followup.delete`, `meeting.assign` / `meeting.override_conflict` / `meeting.create_without_lead`, `note.edit_any` / `note.delete` / `note.view_management`, `user.view`, `file.download`. These all apply only to records the manager can see. Grant a `*.view_all` permission on the Roles screen if a manager should see everything |
 | Sales Executive | `sales_executive` | Own records and own-data reports only; no export, import, bulk, delete, reassign, file download, audit, settings |
+| Trainer | `trainer` | Can be assigned to batches. Holds only `batch.view` and `chat.use` by default: sees batches but no leads |
 
 ### Access matrix (Own / All)
 
@@ -175,6 +209,10 @@ Permissions added by a later release are granted to **existing** system roles on
 Phase 3 added `followup.view_all`, `followup.cancel`, `followup.assign`, `followup.schedule_past`, `followup.configure`. Defaults: Sales Executive gets `followup.cancel` (plus the existing view/create/edit/complete); Sales Manager gets `followup.cancel`, `followup.assign`; Admin gets all five. Sales Executives have no follow-up delete, assign, back-dating or bulk completion.
 
 Phase 4 added `meeting.complete`, `meeting.assign`, `meeting.create_without_lead`, `meeting.schedule_past`, `meeting.configure` (no duplicates of existing names; the spec's `meeting.reschedule` / `meeting.restore` are covered by `meeting.edit` / `meeting.delete`). Defaults: Sales Executive gets `meeting.complete` (plus the existing view/create/edit/cancel); Sales Manager gets `meeting.assign`, `meeting.create_without_lead` (it already held `meeting.override_conflict`; its former `meeting.view_team` is now deprecated); Admin gets all five. Sales Executives cannot assign hosts, override conflicts, delete meetings, schedule in the past or configure meeting types.
+
+Batch Management added `batch.view`, `batch.create`, `batch.edit`, `batch.delete`, `batch.manage_leads`. Defaults: Sales Executive gets `batch.view`, `batch.manage_leads`; Sales Manager also gets `batch.create`, `batch.edit`; Admin gets all five. All of them stay limited to leads the user can already see.
+
+Trainer Assignment added `batch.manage_trainers` and the `trainer` system role. Defaults: Admin and Sales Manager get `batch.manage_trainers`; Sales Executive does not. `db:seed --class=CoreSeeder` creates the permission and the role and grants it without touching other customisations.
 
 Phase 5 added **no new permission**; it uses the existing `facebook.manage`, which stays granted to Super Admin only (Admin does not hold it by default; it can be granted on the Roles screen). The permission gates:
 

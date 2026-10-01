@@ -66,6 +66,9 @@ class NotificationPreferenceController extends Controller
         [$title, $body] = match ($data['event']) {
             PushEvent::NEW_LEAD_ASSIGNED => ['New Lead Assigned', 'Test: a new lead has been assigned to you.'],
             PushEvent::COMMENT => ['New comment', 'Test: a comment was added for you.'],
+            PushEvent::CHAT_MESSAGE => ['New chat message', 'Test: a colleague sent you a message.'],
+            PushEvent::PRIORITY_BROADCAST => ['Urgent team message', 'Test: an urgent message for the whole team.'],
+            PushEvent::BATCH_ASSIGNED => ['Batch assigned', 'Test: you have been assigned to a batch as a trainer.'],
             default => ['Follow-up Reminder', 'Test: your follow-up is due now.'],
         };
 

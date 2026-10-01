@@ -20,6 +20,9 @@ class User extends Authenticatable
 
     public const SUPER_ADMIN_ROLE = 'super_admin';
 
+    /** Users with this role are the only ones that can be assigned to batches as trainers. */
+    public const TRAINER_ROLE = 'trainer';
+
     /**
      * Ownership/security columns (role_id, team_id, manager_id, is_active) are
      * intentionally NOT fillable; UserService assigns them explicitly.
@@ -55,6 +58,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'is_active' => 'boolean',
             'browser_notifications_enabled' => 'boolean',
             'notification_sound_enabled' => 'boolean',
@@ -120,9 +124,54 @@ class User extends Authenticatable
         return $query->where('is_active', true);
     }
 
+    /** Active, non-deleted users holding the Trainer role: the only users that may be newly assigned to a batch. */
+    public function scopeEligibleTrainer(Builder $query): Builder
+    {
+        return $query->active()->whereHas('role', fn ($r) => $r->where('slug', self::TRAINER_ROLE));
+    }
+
+    public function trainedBatches(): BelongsToMany
+    {
+        return $this->belongsToMany(Batch::class, 'batch_trainers', 'trainer_id', 'batch_id')->withPivot('assigned_by', 'created_at');
+    }
+
+    /**
+     * Users whose effective permissions include $permission, resolved in SQL with
+     * the same rules as PermissionRegistrar: super admin, or (role grant OR user
+     * grant) AND NOT user deny.
+     */
+    public function scopeWithPermission(Builder $query, string $permission): Builder
+    {
+        $override = fn (string $type) => fn ($q) => $q->selectRaw('1')
+            ->from('user_permissions')
+            ->join('permissions', 'permissions.id', '=', 'user_permissions.permission_id')
+            ->whereColumn('user_permissions.user_id', 'users.id')
+            ->where('permissions.name', $permission)
+            ->where('user_permissions.type', $type);
+
+        return $query->where(function (Builder $q) use ($permission, $override) {
+            $q->whereHas('role', fn ($r) => $r->where('slug', self::SUPER_ADMIN_ROLE))
+                ->orWhere(function (Builder $q) use ($permission, $override) {
+                    $q->where(function (Builder $q) use ($permission, $override) {
+                        $q->whereExists(fn ($s) => $s->selectRaw('1')
+                            ->from('role_permissions')
+                            ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
+                            ->whereColumn('role_permissions.role_id', 'users.role_id')
+                            ->where('permissions.name', $permission))
+                            ->orWhereExists($override('grant'));
+                    })->whereNotExists($override('deny'));
+                });
+        });
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role?->slug === self::SUPER_ADMIN_ROLE;
+    }
+
+    public function isTrainer(): bool
+    {
+        return $this->role?->slug === self::TRAINER_ROLE;
     }
 
     /** Super Admin or the Admin role. Sales roles are not included. */

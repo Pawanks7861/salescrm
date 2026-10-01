@@ -116,6 +116,16 @@ describe('service worker push', () => {
         await fire('push', push(payload({ url: 'https://evil.test/x' })));
         expect(self.registration.showNotification.mock.calls[0][1].data.url).toBe('/notifications');
     });
+
+    it('keeps urgent priority messages on screen; chat messages behave like other notifications', async () => {
+        const { self, fire } = boot([]);
+        await fire('push', push(payload({ id: 'p1', event: 'PRIORITY_BROADCAST', title: 'Urgent: Office closed', url: '/notifications/p1/open' })));
+        await fire('push', push(payload({ id: 'c1', event: 'CHAT_MESSAGE', title: 'Rahul sent you a message', url: '/notifications/c1/open' })));
+
+        const [priority, chat] = self.registration.showNotification.mock.calls;
+        expect(priority[1]).toMatchObject({ requireInteraction: true, data: { event: 'PRIORITY_BROADCAST', url: '/notifications/p1/open' } });
+        expect(chat[1]).toMatchObject({ requireInteraction: false, data: { event: 'CHAT_MESSAGE' } });
+    });
 });
 
 describe('service worker click', () => {

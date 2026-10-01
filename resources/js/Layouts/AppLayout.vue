@@ -12,9 +12,12 @@ import PoweredBy from '@/Components/ui/PoweredBy.vue';
 import ToastContainer from '@/Components/ui/ToastContainer.vue';
 import GlobalLeadSearch from '@/Components/leads/GlobalLeadSearch.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
+import PriorityBanner from '@/Components/chat/PriorityBanner.vue';
+import { liveChatUnread, livePriority, startLive } from '@/chat/live';
 import { usePermissions } from '@/Composables/usePermissions';
 import { useToast } from '@/Composables/useToast';
 import { startNotifier } from '@/notifications/notifier';
+import { unreadBadge } from '@/utils/chat';
 import { initials } from '@/utils/format';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
@@ -41,7 +44,9 @@ const blockLabelClass = computed(() => (collapsed.value ? 'md:hidden' : 'md:hidd
 
 const user = computed(() => page.props.auth.user);
 const navigation = computed(() => page.props.navigation ?? []);
-const unread = computed(() => page.props.notifications?.unread ?? 0);
+const chatUnread = computed(() => liveChatUnread.value ?? page.props.chat?.unread ?? 0);
+const chatBadge = computed(() => unreadBadge(chatUnread.value));
+const priorityAlerts = computed(() => livePriority.value ?? page.props.priority ?? []);
 const brandName = computed(() => page.props.app?.company || page.props.app?.name || 'Sales CRM');
 
 const isActive = (pattern) => {
@@ -80,6 +85,7 @@ const listeners = [];
 onMounted(() => {
     showFlash(page.props);
     startNotifier(() => page.props);
+    startLive();
     listeners.push(
         router.on('success', (event) => showFlash(event.detail.page.props)),
         router.on('error', (event) => {
@@ -133,6 +139,10 @@ onUnmounted(() => listeners.splice(0).forEach((off) => off()));
                         <span v-if="isActive(item.active)" class="absolute inset-y-2.5 left-0 w-[3px] rounded-r-full bg-brand-500" aria-hidden="true" />
                         <AppIcon :name="item.icon" class="h-5 w-5 shrink-0 transition-colors" :class="isActive(item.active) ? 'text-brand-500' : 'text-slate-400 group-hover:text-slate-600'" />
                         <span class="truncate" :class="labelClass">{{ item.label }}</span>
+                        <template v-if="item.badge === 'chat' && chatBadge">
+                            <span class="ml-auto rounded-full bg-brand-500 px-1.5 text-2xs font-semibold leading-5 text-white" :class="labelClass" :aria-label="`${chatUnread} unread messages`">{{ chatBadge }}</span>
+                            <span class="absolute right-3 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white" :class="collapsed ? 'hidden md:block' : 'hidden md:block lg:hidden'" aria-hidden="true" />
+                        </template>
                     </Link>
                 </div>
             </nav>
@@ -190,10 +200,21 @@ onUnmounted(() => listeners.splice(0).forEach((off) => off()));
                     </slot>
                 </div>
 
+                <Link
+                    v-if="hasRoute('chat.index') && can('chat.use')"
+                    :href="route('chat.index')"
+                    class="icon-btn relative"
+                    :aria-label="chatUnread ? `Chat, ${chatUnread} unread` : 'Chat'"
+                    title="Chat"
+                >
+                    <AppIcon name="chat" class="h-5 w-5" />
+                    <span v-if="chatBadge" class="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-brand-500 px-1 text-center text-[10px] font-semibold leading-[1.1rem] text-white">{{ chatBadge }}</span>
+                </Link>
                 <NotificationBell />
             </header>
 
             <main class="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                <PriorityBanner v-if="priorityAlerts.length" :alerts="priorityAlerts" class="mb-5" />
                 <slot />
             </main>
         </div>
