@@ -10,8 +10,6 @@ use App\Services\Notifications\MinishlinkPushTransport;
 use App\Services\Notifications\PushTransport;
 use App\Services\PermissionRegistrar;
 use App\Services\SettingService;
-use App\Services\Telephony\CallVisibility;
-use App\Services\Telephony\TelephonyManager;
 use App\Support\Permissions;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -33,8 +31,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(LeadVisibility::class);
         $this->app->scoped(FollowupVisibility::class);
         $this->app->scoped(MeetingVisibility::class);
-        $this->app->scoped(CallVisibility::class);
-        $this->app->singleton(TelephonyManager::class);
         $this->app->bind(PushTransport::class, MinishlinkPushTransport::class);
     }
 
@@ -49,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        Route::patterns(['lead' => '[0-9]+', 'note' => '[0-9]+', 'attachment' => '[0-9]+', 'followup' => '[0-9]+', 'followupType' => '[0-9]+', 'meeting' => '[0-9]+', 'meetingType' => '[0-9]+', 'participant' => '[0-9]+', 'facebookPage' => '[0-9]+', 'facebookForm' => '[0-9]+', 'facebookEvent' => '[0-9]+', 'call' => '[0-9]+', 'telephonyNumber' => '[0-9]+', 'telephonyUser' => '[0-9]+', 'callDisposition' => '[0-9]+']);
+        Route::patterns(['lead' => '[0-9]+', 'note' => '[0-9]+', 'attachment' => '[0-9]+', 'followup' => '[0-9]+', 'followupType' => '[0-9]+', 'meeting' => '[0-9]+', 'meetingType' => '[0-9]+', 'participant' => '[0-9]+', 'facebookPage' => '[0-9]+', 'facebookForm' => '[0-9]+', 'facebookEvent' => '[0-9]+']);
 
         $this->registerAuthorization();
         $this->registerRateLimiters();
@@ -79,10 +75,6 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
         // Meta batches deliveries; this only caps abusive floods per source IP.
         RateLimiter::for('meta-webhook', fn (Request $request) => Limit::perMinute(1200)->by($request->ip()));
-        // Exotel stays under 200 API req/min per account; callbacks are far fewer than this cap.
-        RateLimiter::for('telephony-webhook', fn (Request $request) => Limit::perMinute(600)->by($request->ip()));
-        // Softphone session / call initiation per user.
-        RateLimiter::for('telephony', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
         // Uptime monitors poll every 30–60 s.
         RateLimiter::for('health', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
     }

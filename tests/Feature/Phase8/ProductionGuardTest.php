@@ -34,22 +34,21 @@ function productionReadyConfig(): void
         'mail.default' => 'smtp',
         'mail.mailers.smtp.host' => 'smtp.client.test',
         'mail.from.address' => 'crm@client.test',
-        'telephony.driver' => 'exotel',
     ]);
     Cache::forever(ProductionCheck::SCHEDULER_HEARTBEAT_KEY, now()->toIso8601String());
 }
 
 test('the check fails the development defaults of the test environment', function () {
-    config(['app.debug' => true, 'queue.default' => 'sync', 'mail.default' => 'log', 'telephony.driver' => 'fake', 'app.url' => 'http://localhost']);
+    config(['app.debug' => true, 'queue.default' => 'sync', 'mail.default' => 'log', 'app.url' => 'http://localhost']);
 
     [$code, $output] = productionCheck();
 
     expect($code)->toBe(1)
         ->and($output)->toContain('Debug mode is ON')
         ->toContain('QUEUE_CONNECTION=sync')
-        ->toContain('TELEPHONY_DRIVER=fake')
         ->toContain('APP_URL must start with https://')
-        ->toContain('Not ready for production');
+        ->toContain('Not ready for production')
+        ->not->toContain('Telephony');
 });
 
 test('a production-ready configuration passes the release-blocking rows', function () {
@@ -57,7 +56,7 @@ test('a production-ready configuration passes the release-blocking rows', functi
 
     [, $output] = productionCheck();
 
-    foreach (['APP_ENV', 'APP_DEBUG', 'APP_KEY', 'HTTPS (APP_URL)', 'Secure session cookie', 'Queue', 'Telephony driver', 'Meta manual token form', 'Private file disk', 'Demo accounts', 'Scheduler'] as $check) {
+    foreach (['APP_ENV', 'APP_DEBUG', 'APP_KEY', 'HTTPS (APP_URL)', 'Secure session cookie', 'Queue', 'Meta manual token form', 'Private file disk', 'Demo accounts', 'Scheduler'] as $check) {
         expect($output)->toMatch('/\|\s*'.preg_quote($check, '/').'\s*\|\s*PASS\s*\|/');
     }
 });
@@ -68,23 +67,18 @@ test('the check never prints secret values, only whether they are configured', f
         'meta.app_id' => 'META-APP-ID-MARKER-1',
         'meta.app_secret' => 'META-SECRET-MARKER-2',
         'meta.webhook_verify_token' => 'META-VERIFY-MARKER-3',
-        'telephony.exotel.account_sid' => 'EXOTEL-SID-MARKER-4',
-        'telephony.exotel.api_key' => 'EXOTEL-KEY-MARKER-5',
-        'telephony.exotel.api_token' => 'EXOTEL-TOKEN-MARKER-6',
-        'telephony.exotel.webhook_secret' => 'EXOTEL-HOOK-MARKER-7',
         'webpush.vapid.private_key' => 'VAPID-PRIVATE-MARKER-8',
         'database.connections.mysql.password' => 'DB-PASSWORD-MARKER-9',
         'mail.mailers.smtp.password' => 'SMTP-PASSWORD-MARKER-10',
     ];
-    config($secrets + ['telephony.driver' => 'exotel']);
+    config($secrets);
 
     [, $output] = productionCheck();
 
     foreach ($secrets as $value) {
         expect($output)->not->toContain($value);
     }
-    expect($output)->toContain('App ID, secret and verify token configured')
-        ->toContain('Account, API key/token and callback secret configured');
+    expect($output)->toContain('App ID, secret and verify token configured');
 });
 
 test('partially configured integrations fail instead of passing silently', function () {

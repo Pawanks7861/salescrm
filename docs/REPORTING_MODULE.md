@@ -1,6 +1,8 @@
 # Reporting Module (Phase 7)
 
-Factual, permission-scoped reporting on leads, pipeline, conversion, response speed, calls, follow-ups, meetings, campaigns, assignments and activity. Reports are **read-only**: the only write is the creation of an export file. Reports never change a lead, assignment, call, follow-up or meeting. To act on a number, follow its drill-down to the operational screen.
+Factual, permission-scoped reporting on leads, pipeline, conversion, response speed, follow-ups, meetings, campaigns, assignments and activity. Reports are **read-only**: the only write is the creation of an export file. Reports never change a lead, assignment, follow-up or meeting. To act on a number, follow its drill-down to the operational screen.
+
+> **Telephony removed (Phase 6).** The Calls report, the call KPIs (calls, connected, connection rate, talk time, missing disposition) and the call metrics class were removed with the telephony module. First attempt and first contact are now measured from follow-ups and meetings only. There are 13 reports.
 
 There is no AI scoring, win probability, salesperson score, "best/worst performer" label, scheduled email or dashboard builder. The "weighted pipeline" is the status probability an admin typed in, not a prediction.
 
@@ -18,10 +20,10 @@ There is no AI scoring, win probability, salesperson score, "best/worst performe
 ReportController ──► ReportService::page(user, slug, input)
                         ├─ ReportScope::for(user)        tier OWN | ALL (else 403)
                         ├─ ReportFilters::fromInput()    preset / range / filters, out-of-scope ids dropped
-                        ├─ ReportQueries(scope, filters) scoped base queries (leads, cohort, calls, …)
+                        ├─ ReportQueries(scope, filters) scoped base queries (leads, cohort, follow-ups, …)
                         ├─ ReportRegistry::resolve(slug) whitelist → ReportDefinition (404 otherwise)
                         └─ definition->sections(q, links) KPI tiles, charts, tables (all numbers computed in PHP/SQL)
-Metrics\*Metrics        reusable SQL aggregates (LeadMetrics, ConversionMetrics, ResponseMetrics, CallMetrics,
+Metrics\*Metrics        reusable SQL aggregates (LeadMetrics, ConversionMetrics, ResponseMetrics,
                         FollowupMetrics, MeetingMetrics, PipelineMetrics, AssignmentMetrics, ActivityMetrics)
 ReportExportService     CSV exports of any report table (same definition → CSV always matches the screen)
 ```
@@ -53,9 +55,8 @@ Chart.js is loaded lazily (a separate ~70 KB gzipped chunk, imported only on rep
 | `/reports/assignments` | Assignments | Leads | First assignment, reassignments, time to assignment |
 | `/reports/sales-performance` | Salesperson performance | People | Factual metrics side by side, no ranking. ALL: every salesperson + salesperson filter; OWN: own row only |
 | ~~`/reports/teams`~~ | *(removed)* | | Team performance was removed with team visibility; the slug returns **404** for everyone, including exports |
-| `/reports/activity` | Activity | People | Leads created, status changes, notes, calls, follow-ups, meetings per user |
+| `/reports/activity` | Activity | People | Leads created, status changes, notes, follow-ups, meetings per user |
 | `/reports/response-time` | Response time | Activity | First attempt and first contact, Meta speed-to-lead |
-| `/reports/calls` | Calls | Activity | Requires call visibility |
 | `/reports/follow-ups` | Follow-ups | Activity | Requires follow-up visibility |
 | `/reports/meetings` | Meetings | Activity | Requires meeting visibility |
 | `/reports/campaigns` | Sources, campaigns & Meta | Marketing | Includes Meta enquiries vs unique leads |
@@ -76,8 +77,8 @@ There is no team tier. `report.view_team` is deprecated: it's stripped from reso
 
 `ReportScope` applies **both** layers:
 
-1. The existing module visibility services: `LeadVisibility`, `CallVisibility`, `FollowupVisibility` and `MeetingVisibility`. Calls, follow-ups and meetings still AND-s the linked lead's visibility.
-2. For OWN, a cap on the owner column: leads `assigned_to`, calls `agent_user_id`, follow-ups `assigned_to`, meetings `host_user_id`. A user granted `lead.view_all` without `report.view_all` still sees only their own numbers in reports. `team_id` columns are never used.
+1. The existing module visibility services: `LeadVisibility`, `FollowupVisibility` and `MeetingVisibility`. Follow-ups and meetings still AND the linked lead's visibility.
+2. For OWN, a cap on the owner column: leads `assigned_to`, follow-ups `assigned_to`, meetings `host_user_id`. A user granted `lead.view_all` without `report.view_all` still sees only their own numbers in reports. `team_id` columns are never used.
 
 The Salesperson performance report shows every salesperson for ALL (plus the salesperson filter). An OWN user sees only their own row.
 
@@ -85,7 +86,7 @@ Reports are never built on unrestricted models and filtered afterwards. Every ba
 
 **Filter privacy.** The salesperson dropdown exists only for ALL. OWN users get no people list. There is no team filter. City and state options are distinct values from leads the viewer can see (at most 200). Source, campaign and status options are reference data. User ids outside the scope and any `team` parameter are **silently dropped** from the request, so a tampered URL shows the viewer's normal scope.
 
-**Drill-down security.** Links go to existing screens (`/leads`, `/calls`, `/follow-ups`, `/meetings`, `/leads/{id}`) with filters in the query string. Those screens apply their own policies, so a drill-down can never show more than the operational list would. A link is omitted when the viewer cannot `viewAny` the target module. The operational lists exclude archived leads, so a drill-down count can be lower than an "archived included" report number.
+**Drill-down security.** Links go to existing screens (`/leads`, `/follow-ups`, `/meetings`, `/leads/{id}`) with filters in the query string. Those screens apply their own policies, so a drill-down can never show more than the operational list would. A link is omitted when the viewer cannot `viewAny` the target module. The operational lists exclude archived leads, so a drill-down count can be lower than an "archived included" report number.
 
 ## 4. Filters and date semantics
 
@@ -94,7 +95,7 @@ Reports are never built on unrestricted models and filtered afterwards. Every ba
 - **DST:** the offset is taken at the end of the period. For timezones with DST, buckets near a transition can be off by one hour. India has no DST.
 - **Comparison:** "this month/quarter/year" compare with the same number of days at the start of the previous month/quarter/year (month-to-date vs same days last month). "Last month/quarter" compare with the calendar period before. Other presets compare with the equal-length window immediately before. A change is shown as N/A when the previous value is 0 or null. Percent KPIs show the change in percentage **points**.
 - **"Now" snapshots** ignore the date range and are labelled "(now)": open pipeline, overdue follow-ups, upcoming meetings, ageing and neglected leads.
-- **Archived leads** are included by default ("archived: include"), because they are part of history. "Exclude" removes them from lead metrics and from calls, follow-ups and meetings linked to them.
+- **Archived leads** are included by default ("archived: include"), because they are part of history. "Exclude" removes them from lead metrics and from follow-ups and meetings linked to them.
 - Other filters: salesperson (ALL only), source, campaign, status, priority, city and state. There is no team filter. Each report hides the filters that do not apply to it.
 
 ## 5. Cohort vs period metrics
@@ -136,16 +137,10 @@ Period outcomes count each lead once per period even if it moved to won twice. A
 | **Pipeline value** | Sum of `estimated_value` of open leads **now**. Leads without a value are counted separately ("N open leads have no value") and never guessed | Σ estimated_value | | now | ₹87,10,000 (6 without value) |
 | **Weighted pipeline** | Σ estimated_value × status probability ÷ 100 (admin-configured probability, not a prediction) | | | now | New 10%, Negotiation 75% |
 | **Open lead** | Not won, not lost, not archived | | | now | |
-| **First response time** (first attempt) | Lead creation → earliest outreach of any result: outbound call `started_at`, any completed follow-up, or the first contact if earlier | | | earliest of those | Created 10:00, first dial 10:04 → **4 min** |
-| **First contact time** | Lead creation → earliest actual contact: connected call `answered_at`, follow-up completed with a contact outcome (connected, interested, not interested, call back later, demo/proposal required), meeting completed with a contact outcome | | | earliest of those | Connected at 10:12 → **12 min** |
+| **First response time** (first attempt) | Lead creation → earliest outreach of any result: any completed follow-up (`completed_at`), or the first contact if earlier | | | earliest of those | Created 10:00, follow-up completed "no answer" at 10:04 → **4 min** |
+| **First contact time** | Lead creation → earliest actual contact: follow-up completed with a contact outcome (connected, interested, not interested, call back later, demo/proposal required), meeting completed with a contact outcome | | | earliest of those | Follow-up completed "connected" at 10:12 → **12 min** |
 | **Within target** | Cohort leads whose first attempt ≤ `report.response_target_minutes` (default 15) | leads within target | cohort leads | | 54.5% |
 | **No attempt** | Cohort leads with no attempt yet (not 0 minutes) | | | | |
-| **Calls** | Calls started in the period (inbound + outbound) | count | | `calls.started_at` | 3 |
-| **Connected** | Status `answered` or `completed` | count | | `started_at` | 2 |
-| **Connection rate** | Connected outbound ÷ finished outbound. Finished = answered, completed, busy, no_answer, failed, missed; in-flight and cancelled calls are excluded | connected outbound | finished outbound | `started_at` | 2 / 3 = 66.7% |
-| **Talk time** | Provider-reported `talk_duration_seconds` of connected calls only (busy, no-answer and failed add nothing; ring time is excluded) | Σ talk seconds | | `started_at` | 300 + 600 = 900 s |
-| **Average talk time** | Talk time ÷ connected calls with a reported duration | talk seconds | connected calls with duration | | 450 s |
-| **Missing disposition** | Calls that require an outcome and have none | | | | |
 | **Follow-ups due** | Follow-ups scheduled from the period start to min(period end, now), **excluding** originals replaced by a reschedule (the replacement is counted instead) | | | `scheduled_at` | |
 | **Follow-up completion rate** | Completed ÷ due | completed (of due) | due | `scheduled_at` | 1 / 2 = 50% |
 | **On-time rate** | Completed within `followup.overdue_alert_after_minutes` of the scheduled time ÷ completed | | | `completed_at` − `scheduled_at` | |
@@ -172,7 +167,6 @@ Percentages are rounded to one decimal place and are `null` (shown as **N/A**) w
 ## 8. Attribution
 
 - **Lead metrics** (new leads, wins, pipeline, conversion, response time) use the lead's **current** owner. Unassigned leads appear only in Company (ALL) reports. `lead_status_changes` also stores the owner at the time of each change for future "owner at the time" analysis.
-- **Calls** use the agent on the call (`agent_user_id`, historical and never rewritten).
 - **Follow-ups** use the assignee, and `completed_by` for the activity report.
 - **Meetings** use the host.
 - No report reads the deprecated `team_id` columns.
@@ -200,7 +194,7 @@ Report **results are not cached**. Every page is computed live from the viewer's
 ## 12. Performance
 
 - Every KPI group, chart and table is one aggregate query. There is no per-row or per-user query loop (N+1): user and status names are resolved from small cached-per-request lookups. Query counts are **constant in the number of leads**. The test suite checks 25 vs 100 leads for every report and 30 vs 1,030 leads for the overview. On the demo data, pages run 11–58 queries in 25–240 ms.
-- Indexes used (all pre-existing except the Phase 7 ones): `leads (created_at)` plus the owner/status foreign-key indexes (the legacy `team_id` indexes still exist but are no longer used by reports); `lead_status_changes (lead_id, changed_at)`, `(to_status_id, changed_at)` and `(changed_at)` (Phase 7); `lead_assignments (created_at)` (Phase 7); `calls (agent_user_id, started_at)`, `(team_id, started_at)`, `(lead_id, started_at)`, `(status, started_at)`; `followups (assigned_to, status, scheduled_at)`, `(team_id, status, scheduled_at)`, `(lead_id, status, scheduled_at)`; `meetings (host_user_id, status, start_at)`, `(team_id, status, start_at)`, `(lead_id, status, start_at)`; `lead_enquiries (lead_id, received_at)`. On the demo dataset MySQL scans the tiny tables directly; the period and owner indexes take over as volumes grow.
+- Indexes used (all pre-existing except the Phase 7 ones): `leads (created_at)` plus the owner/status foreign-key indexes (the legacy `team_id` indexes still exist but are no longer used by reports); `lead_status_changes (lead_id, changed_at)`, `(to_status_id, changed_at)` and `(changed_at)` (Phase 7); `lead_assignments (created_at)` (Phase 7); `followups (assigned_to, status, scheduled_at)`, `(team_id, status, scheduled_at)`, `(lead_id, status, scheduled_at)`; `meetings (host_user_id, status, start_at)`, `(team_id, status, start_at)`, `(lead_id, status, start_at)`; `lead_enquiries (lead_id, received_at)`. On the demo dataset MySQL scans the tiny tables directly; the period and owner indexes take over as volumes grow.
 - Response time uses correlated `MIN()` subqueries per cohort lead, bounded by the cohort size (one period of leads).
 - SQL is driver-aware (`ReportSql`): MySQL `TIMESTAMPDIFF`/`DATE_ADD`/`LEAST` vs SQLite `strftime`/`MIN` for the test suite.
 
@@ -220,11 +214,10 @@ Report **results are not cached**. Every page is computed live from the viewer's
 `ReportingDemoSeeder`, called from `DemoSeeder` and **refusing to run outside `APP_ENV=local`**, adds:
 
 - executive Arjun Mehta (`arjun@salescrm.local` / `Password@123`) with five leads. He's placed on a legacy "Mumbai Team" row; the demo seeders deliberately stamp legacy `team_id` values to show they grant nothing;
-- historical calls with every outcome (connected, no answer, busy, failed, one missed inbound);
 - a repeat Meta enquiry (one lead, two enquiries);
 - a no-show meeting.
 
-It also spreads the demo status history over each lead's life. It skips itself once demo calls exist. Production seeding never creates analytics data.
+It also spreads the demo status history over each lead's life. It skips itself once Arjun exists. Production seeding never creates analytics data.
 
 ## 15. Tests
 
@@ -234,8 +227,8 @@ It also spreads the demo status history over each lead's life. It skips itself o
 |---|---|
 | `ReportVisibilityTest` | Own/all (legacy team grants → own), tampering, filter options, drill-downs, dashboard, `/reports/teams` 404 |
 | `ReportExportTest` | 403, grants, isolation, private/expiring files, queue, formula guard |
-| `ReportMetricsTest` | First response, calls, follow-ups, meetings, cohort vs period, funnel, pipeline, ageing, archived, N/A comparisons, read-only |
-| `ReportMetaAndTimezoneTest` | Meta enquiries, 23:59/00:00, daily buckets, calls across midnight |
+| `ReportMetricsTest` | First response, follow-ups, meetings, cohort vs period, funnel, pipeline, ageing, archived, N/A comparisons, read-only |
+| `ReportMetaAndTimezoneTest` | Meta enquiries, 23:59/00:00, daily buckets |
 | `ReportQueryAndAuditTest` | Query counts, REPORT_VIEWED throttling, no PII in audit/log/cache, demo seeder guard |
 
 Release checks A–P in the Phase 7 brief map to tests named `A: …` to `N: …`, `O: …` and `P: …`.

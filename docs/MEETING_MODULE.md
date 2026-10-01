@@ -196,6 +196,6 @@ Production needs `php artisan schedule:run` every minute (cron / Task Scheduler)
 
 No meeting export, no `.ics` download, no automatic Zoom / Google Meet / Teams link creation (only a URL the user pastes), no external calendar sync, no email / WhatsApp to participants, no Facebook Lead Ads (Phase 5).
 
-## 17. Calls (Phase 6)
+## 17. Calls (Phase 6) — removed
 
-The call outcome modal can schedule a meeting through `MeetingService::create`. It uses the same permissions (`meeting.create`, host scope, `meeting.override_conflict`), conflict detection (the modal shows conflicts and an override when allowed) and reminders as the meeting form. The meeting is linked to the call (`calls.meeting_id`, `next_action = meeting`), and its errors are reported under `meeting.*`. If scheduling fails, the whole outcome is rolled back. See [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The telephony module and its call outcome modal have been removed. Meetings are unaffected: they are still scheduled through the meeting form and `MeetingService` with the same permissions, conflict detection and reminders. The "Phone Call" meeting type is ordinary meeting data.

@@ -33,9 +33,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
             Route::middleware('throttle:meta-webhook')
                 ->group(base_path('routes/webhooks.php'));
-
-            Route::middleware('throttle:telephony-webhook')
-                ->group(base_path('routes/telephony-webhooks.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -58,20 +55,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 $isExport = str_contains($request->path(), 'export');
                 $isFollowup = ! $isExport && $request->routeIs('followups.*');
                 $isMeeting = ! $isExport && $request->routeIs('meetings.*', 'calendar.*');
-                $isCall = ! $isExport && $request->routeIs('calls.*', 'telephony.*');
 
                 app(AuditService::class)->log(
                     match (true) {
                         $isExport => AuditAction::ExportAttempted,
                         $isFollowup => AuditAction::FollowupAccessDenied,
                         $isMeeting => AuditAction::MeetingAccessDenied,
-                        $isCall => AuditAction::CallAccessDenied,
                         default => AuditAction::AccessDenied,
                     },
                     match (true) {
                         $isFollowup => 'followups',
                         $isMeeting => 'meetings',
-                        $isCall => 'calls',
                         default => 'security',
                     },
                     null,

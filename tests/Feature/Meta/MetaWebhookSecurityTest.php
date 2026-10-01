@@ -171,7 +171,7 @@ test('webhook errors never render HTML or debug pages', function () {
 test('there is no HTTP route that bypasses signature validation', function () {
     $routes = collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($r) => str_contains($r->uri(), 'meta') || str_contains($r->uri(), 'webhook') || str_contains($r->uri(), 'facebook'))
-        ->reject(fn ($r) => str_starts_with($r->uri(), 'admin/integrations/facebook') || str_starts_with($r->uri(), 'webhooks/telephony/'))
+        ->reject(fn ($r) => str_starts_with($r->uri(), 'admin/integrations/facebook'))
         ->map(fn ($r) => implode('|', $r->methods()).' '.$r->uri())
         ->values()->all();
 

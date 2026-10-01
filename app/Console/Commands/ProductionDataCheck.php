@@ -31,7 +31,6 @@ class ProductionDataCheck extends Command
         'Lost reasons' => 'lost_reasons',
         'Follow-up types' => 'followup_types',
         'Meeting types' => 'meeting_types',
-        'Call dispositions' => 'call_dispositions',
         'Settings' => 'settings',
     ];
 
@@ -44,9 +43,6 @@ class ProductionDataCheck extends Command
         'Follow-ups' => 'followups',
         'Follow-up reminders' => 'followup_reminders',
         'Meetings' => 'meetings',
-        'Calls' => 'calls',
-        'Call recordings' => 'call_recordings',
-        'Telephony integrations' => 'telephony_integrations',
         'Meta integrations' => 'facebook_integrations',
         'Meta pages' => 'facebook_pages',
         'Meta forms' => 'facebook_forms',
@@ -128,15 +124,9 @@ class ProductionDataCheck extends Command
         }
         $this->record('Demo leads', $demoLeads === 0 ? 'PASS' : 'FAIL', (string) $demoLeads);
 
-        $testTelephony = $this->count('telephony_integrations', fn ($q) => $q->whereIn('provider', DemoData::TEST_TELEPHONY_PROVIDERS));
-        $this->record('Fake / local telephony integrations', $testTelephony === 0 ? 'PASS' : 'FAIL', (string) $testTelephony);
-
         $demoTeams = $this->count('teams', fn ($q) => $q->whereIn('name', DemoData::TEAM_NAMES));
         $demoCampaigns = $this->count('campaigns', fn ($q) => $q->whereIn('name', DemoData::CAMPAIGN_NAMES));
         $this->record('Demo teams / campaigns', $demoTeams + $demoCampaigns === 0 ? 'PASS' : 'FAIL', (string) ($demoTeams + $demoCampaigns));
-
-        $fake = config('telephony.driver') === 'fake';
-        $this->record('Telephony driver', $fake && app()->isProduction() ? 'FAIL' : ($fake ? 'WARN' : 'PASS'), (string) config('telephony.driver'));
     }
 
     private function operationalFiles(): int

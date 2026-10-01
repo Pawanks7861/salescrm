@@ -36,8 +36,8 @@ class ResponseTimeReport extends ReportDefinition
         $sections = [
             $this->kpis('summary', 'Leads created in the period', [
                 Metric::kpi('leads', 'Leads created', $s['leads'], 'number', 'Acquisition cohort.', $ps['leads'] ?? null, link: $links->leads([], true)),
-                Metric::kpi('median_attempt', 'Median first response attempt', $s['median_attempt'], 'duration', 'Creation → first outbound call, completed follow-up or contact.', $ps['median_attempt'] ?? null, higherIsBetter: false),
-                Metric::kpi('median_contact', 'Median first contact', $s['median_contact'], 'duration', 'Creation → first connected call, or follow-up / meeting completed with a contact outcome.', $ps['median_contact'] ?? null, higherIsBetter: false),
+                Metric::kpi('median_attempt', 'Median first response attempt', $s['median_attempt'], 'duration', 'Creation → first completed follow-up or contact.', $ps['median_attempt'] ?? null, higherIsBetter: false),
+                Metric::kpi('median_contact', 'Median first contact', $s['median_contact'], 'duration', 'Creation → first follow-up / meeting completed with a contact outcome.', $ps['median_contact'] ?? null, higherIsBetter: false),
                 Metric::kpi('within_target', "Attempted within {$target} min", $s['within_target_rate'], 'percent', "Share of created leads with a first attempt within {$target} minutes (setting report.response_target_minutes).", $ps['within_target_rate'] ?? null),
                 Metric::kpi('contact_rate', 'Contacted', $s['contact_rate'], 'percent', 'Share of created leads reached so far.', $ps['contact_rate'] ?? null),
                 Metric::kpi('no_attempt', 'No response yet', $s['no_attempt'], 'number', 'Created leads with no response attempt so far.', $ps['no_attempt'] ?? null, higherIsBetter: false),

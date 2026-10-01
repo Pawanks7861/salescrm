@@ -194,6 +194,6 @@ Audit (`module = followups`): `FOLLOWUP_CREATED`, `_UPDATED`, `_COMPLETED`, `_RE
 
 `tests/Feature/Followups/*` — including the release-blocking `FollowupIsolationSecurityTest` (Rahul vs Priya) and the reminder idempotency test in `FollowupReminderTest`.
 
-## 18. Calls (Phase 6)
+## 18. Calls (Phase 6) — removed
 
-The call outcome modal can schedule the next follow-up. It calls `FollowupService::create` with the same validation, duplicate detection (`confirm_duplicate`), assignment rules and reminders as the follow-up form, and it updates `leads.next_followup_at`. The follow-up is linked to the call (`calls.followup_id`, `next_action = followup`), and its errors are reported under `followup.*`. If scheduling fails, the whole outcome is rolled back. The Calls page links to the follow-up only when the user can view it. See [TELEPHONY_MODULE.md](TELEPHONY_MODULE.md).
+The telephony module and its call outcome modal have been removed. Follow-ups are unaffected: they are still created, completed and reminded through the follow-up form and `FollowupService`, and the "Call" follow-up type and the `connected` / `no_answer` outcomes remain ordinary follow-up data.

@@ -5,8 +5,8 @@ namespace Database\Seeders\Concerns;
 use RuntimeException;
 
 /**
- * Demo data (demo users with the shared "Password@123", sample leads, calls,
- * meetings) may only be created in the local environment. Any environment
+ * Demo data (demo users with the shared "Password@123", sample leads,
+ * follow-ups, meetings) may only be created in the local environment. Any environment
  * other than local/testing is refused with an exception so that
  * `db:seed --class=DemoSeeder` cannot silently populate a real CRM.
  */

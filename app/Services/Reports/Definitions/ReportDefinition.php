@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports\Definitions;
 
-use App\Models\Call;
 use App\Models\Followup;
 use App\Models\Lead;
 use App\Models\Meeting;
@@ -128,7 +127,7 @@ abstract class ReportDefinition
 
     protected function canSee(ReportQueries $q, string $module): bool
     {
-        $model = ['lead' => Lead::class, 'call' => Call::class, 'followup' => Followup::class, 'meeting' => Meeting::class][$module];
+        $model = ['lead' => Lead::class, 'followup' => Followup::class, 'meeting' => Meeting::class][$module];
 
         return $q->scope->user->can('viewAny', $model);
     }

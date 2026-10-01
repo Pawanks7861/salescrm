@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
  * System data only, safe for production and idempotent (re-running never
  * duplicates or overwrites admin edits): permissions, roles and their
  * permissions, default settings, lead statuses / sources / lost reasons,
- * follow-up types, meeting types and call dispositions.
+ * follow-up types and meeting types.
  *
  * It creates no users, no business records, no integrations and no
  * credentials. The first account is created with crm:create-super-admin.

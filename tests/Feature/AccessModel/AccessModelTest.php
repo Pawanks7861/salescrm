@@ -2,7 +2,6 @@
 
 use App\Enums\AssignmentType;
 use App\Models\Attachment;
-use App\Models\Call;
 use App\Models\Lead;
 use App\Models\LeadAssignmentRule;
 use App\Models\LeadNote;
@@ -31,7 +30,6 @@ beforeEach(function () {
     Storage::fake('local');
     $this->org = $org = salesOrg();
     $this->travelTo(CarbonImmutable::parse('2026-09-15 11:00', 'Asia/Kolkata'));
-    telephonySetup([$org->rahul, $org->priya]);
 
     $this->world = [];
     foreach (['rahul' => 'RahulCustomer', 'priya' => 'PriyaCustomer'] as $key => $name) {
@@ -46,7 +44,6 @@ beforeEach(function () {
             'lead' => $lead,
             'followup' => scheduleFollowup($lead, $owner, ['scheduled_date' => '2026-09-16', 'title' => "{$name} follow-up"]),
             'meeting' => scheduleMeeting($lead, $owner, ['scheduled_date' => '2026-09-17', 'title' => "{$name} meeting"]),
-            'call' => finishCall($this, startCall($lead, $owner), 'completed', 60, "fake://recording/{$key}"),
             'note' => LeadNote::where('lead_id', $lead->id)->sole(),
             'attachment' => Attachment::where('attachable_id', $lead->id)->sole(),
         ];
@@ -61,19 +58,14 @@ function accessUrls(object $w): array
         'lead activities' => "/leads/{$w->lead->id}/activities",
         'follow-up' => "/follow-ups/{$w->followup->id}",
         'meeting' => "/meetings/{$w->meeting->id}",
-        'call' => "/calls/{$w->call->id}",
-        'call status' => "/calls/{$w->call->id}/status",
-        'recording' => "/calls/{$w->call->id}/recording",
         'note history' => "/leads/{$w->lead->id}/notes/{$w->note->id}/history",
         'attachment' => "/leads/{$w->lead->id}/attachments/{$w->attachment->id}/download",
     ];
 }
 
-/** Grants the listen/download permissions so only visibility can refuse access. */
+/** Grants the download permission so only visibility can refuse access. */
 function withFileAccess(User $user): User
 {
-    $user = setPermission($user, Permissions::CALL_RECORDING_LISTEN);
-
     return setPermission($user, 'file.download');
 }
 
@@ -95,7 +87,7 @@ function assertFullAccess($test, User $user, object $w): void
 
 function listContent($test, User $user): string
 {
-    return collect(['/leads', '/leads/pipeline', '/follow-ups?tab=all', '/meetings?tab=all', '/calls', '/dashboard', '/calendar/events?start=2026-09-14T00:00:00&end=2026-09-21T00:00:00'])
+    return collect(['/leads', '/leads/pipeline', '/follow-ups?tab=all', '/meetings?tab=all', '/dashboard', '/calendar/events?start=2026-09-14T00:00:00&end=2026-09-21T00:00:00'])
         ->map(fn ($url) => $test->actingAs($user)->get($url)->assertOk()->getContent())
         ->implode("\n");
 }
@@ -126,7 +118,7 @@ test('§38 Rahul and Priya are fully isolated across every lead resource', funct
     // Reports: own numbers only, one performance row, no salesperson dropdown.
     $overview = reportProps($this, $rahul, 'overview', ['preset' => 'this_month']);
     expect(reportKpi($overview, 'sales', 'new_leads'))->toBe(1)
-        ->and(reportKpi($overview, 'activity', 'calls'))->toBe(1)
+        ->and(reportKpi($overview, 'activity', 'meetings_upcoming'))->toBe(1)
         ->and($overview['options']['users'])->toBe([]);
     expect(reportRows(reportProps($this, $rahul, 'sales-performance', ['preset' => 'this_month']), 'performance')->pluck('name')->all())->toBe(['Rahul Sharma']);
     expect(json_encode($overview))->not->toContain('PriyaCustomer')->not->toContain('Priya Patel');
@@ -136,9 +128,6 @@ test('§38 Rahul and Priya are fully isolated across every lead resource', funct
     $this->actingAs($rahul)->post("/leads/{$p->lead->id}/notes", ['note' => 'x', 'visibility' => 'team'])->assertForbidden();
     $this->actingAs($rahul)->post("/follow-ups/{$p->followup->id}/complete", ['outcome' => 'connected'])->assertForbidden();
     $this->actingAs($rahul)->post("/meetings/{$p->meeting->id}/cancel", ['reason' => 'x'])->assertForbidden();
-    $calls = Call::count();
-    expect($this->actingAs($rahul)->postJson('/calls', ['lead_id' => $p->lead->id])->getStatusCode())->toBeIn([403, 404])
-        ->and(Call::count())->toBe($calls);
 });
 
 test('§39 unassigned leads are visible to Admin and Super Admin only', function () {
@@ -165,7 +154,7 @@ test('§40 reassignment moves every nested resource to the new owner immediately
     $this->actingAs($this->org->admin)->post("/leads/{$w->lead->id}/assign", ['assigned_to' => $priya->id])->assertRedirect();
 
     // The old owner loses the lead and everything under it — even the follow-up
-    // still assigned to him, the meeting he hosts and the call he made.
+    // still assigned to him and the meeting he hosts.
     assertNoAccess($this, $rahul, $w);
     expect(listContent($this, $rahul))->not->toContain('RahulCustomer');
     expect($this->actingAs($rahul)->get("/leads/{$w->lead->id}")->inertiaProps('context'))->toBe('lead');
@@ -184,7 +173,7 @@ test('§41 a Sales Manager with legacy team data sees nothing of their former te
     $manager = withFileAccess($this->org->manager);
     // Stamp legacy team ids on every nested record as pre-upgrade data would have.
     foreach ($this->world as $w) {
-        foreach ([$w->lead, $w->followup, $w->meeting, $w->call] as $model) {
+        foreach ([$w->lead, $w->followup, $w->meeting] as $model) {
             $model->forceFill(['team_id' => $this->org->team->id])->saveQuietly();
         }
     }

@@ -43,7 +43,6 @@ class ProductionCheck extends Command
         $this->sessions();
         $this->logging();
         $this->meta();
-        $this->telephony();
         $this->push();
         $this->demoData();
 
@@ -212,34 +211,6 @@ class ProductionCheck extends Command
 
         $manual = (bool) config('meta.allow_manual_token');
         $this->record('Meta manual token form', $manual ? 'FAIL' : 'PASS', $manual ? 'META_ALLOW_MANUAL_TOKEN must be false' : 'Disabled');
-    }
-
-    private function telephony(): void
-    {
-        $driver = (string) config('telephony.driver');
-        if ($driver === 'fake') {
-            $this->record('Telephony driver', 'FAIL', 'TELEPHONY_DRIVER=fake is for local development only');
-
-            return;
-        }
-        $this->record('Telephony driver', 'PASS', "Driver \"{$driver}\" (fake simulator disabled)");
-
-        $values = [
-            'EXOTEL_ACCOUNT_SID' => config('telephony.exotel.account_sid'),
-            'EXOTEL_API_KEY' => config('telephony.exotel.api_key'),
-            'EXOTEL_API_TOKEN' => config('telephony.exotel.api_token'),
-            'EXOTEL_WEBHOOK_SECRET' => config('telephony.exotel.webhook_secret'),
-        ];
-        $set = array_keys(array_filter($values, 'filled'));
-
-        if ($set === []) {
-            $this->record('Exotel credentials', 'WARN', 'Not configured (calling disabled)');
-        } elseif (count($set) < count($values)) {
-            $this->record('Exotel credentials', 'FAIL', 'Missing: '.implode(', ', array_diff(array_keys($values), $set)));
-        } else {
-            $this->record('Exotel credentials', 'PASS', 'Account, API key/token and callback secret configured');
-            $this->record('Exotel browser calling', filled(config('telephony.exotel.webrtc_access_token')) && filled(config('telephony.exotel.webrtc_sdk_url')) ? 'PASS' : 'WARN', filled(config('telephony.exotel.webrtc_sdk_url')) ? 'SDK URL configured' : 'Not configured (click-to-call only)');
-        }
     }
 
     private function push(): void

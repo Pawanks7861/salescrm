@@ -11,8 +11,7 @@ use Illuminate\Database\Seeder;
 /**
  * Creates the default system roles. Full default permissions are only assigned
  * when a role is first created, so other admin customisations survive re-seeding.
- * Facebook and telephony integration are always removed from Admin: Super Admin
- * keeps those. Permissions newly introduced by a release are granted to existing
+ * Facebook integration is always removed from Admin: Super Admin keeps it. Permissions newly introduced by a release are granted to existing
  * system roles according to these defaults.
  */
 class RoleSeeder extends Seeder
@@ -24,7 +23,6 @@ class RoleSeeder extends Seeder
             P::FOLLOWUP_VIEW, P::FOLLOWUP_CREATE, P::FOLLOWUP_EDIT, P::FOLLOWUP_COMPLETE, P::FOLLOWUP_CANCEL,
             P::MEETING_VIEW, P::MEETING_CREATE, P::MEETING_EDIT, P::MEETING_CANCEL, P::MEETING_COMPLETE,
             P::FILE_VIEW, P::FILE_UPLOAD,
-            P::CALL_VIEW, P::CALL_MAKE, P::CALL_RECEIVE, P::CALL_ADD_DISPOSITION, P::CALL_EDIT_NOTES,
             P::REPORT_VIEW,
         ];
 
@@ -36,10 +34,9 @@ class RoleSeeder extends Seeder
             P::NOTE_EDIT_ANY, P::NOTE_DELETE, P::NOTE_VIEW_MANAGEMENT,
             P::USER_VIEW,
             P::FILE_DOWNLOAD,
-            P::CALL_RECORDING_LISTEN,
         ];
 
-        $excludedFromAdmin = [P::ROLE_MANAGE, P::FACEBOOK_MANAGE, P::LEAD_RESTORE, P::USER_DELETE, P::CALL_RECORDING_DOWNLOAD, P::CALL_CONFIGURE];
+        $excludedFromAdmin = [P::ROLE_MANAGE, P::FACEBOOK_MANAGE, P::LEAD_RESTORE, P::USER_DELETE];
         $admin = array_values(array_diff(P::names(), $excludedFromAdmin));
 
         return [
@@ -70,7 +67,7 @@ class RoleSeeder extends Seeder
 
             if ($slug === 'admin') {
                 $role->permissions()->detach(
-                    Permission::whereIn('name', [P::FACEBOOK_MANAGE, P::CALL_CONFIGURE])->pluck('id')
+                    Permission::whereIn('name', [P::FACEBOOK_MANAGE])->pluck('id')
                 );
             }
         }

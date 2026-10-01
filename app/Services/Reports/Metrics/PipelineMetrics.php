@@ -140,8 +140,7 @@ class PipelineMetrics
         $inactiveBefore = ReportSql::at(now()->subDays($this->inactiveDays())->toImmutable());
         $open = "'".implode("','", MeetingStatus::openValues())."'";
 
-        $noAttempt = "NOT EXISTS (SELECT 1 FROM calls nc WHERE nc.lead_id = leads.id AND (nc.direction = 'outbound' OR nc.status IN ('answered','completed')))
-            AND NOT EXISTS (SELECT 1 FROM followups nf WHERE nf.lead_id = leads.id AND nf.status = 'completed' AND nf.deleted_at IS NULL)
+        $noAttempt = "NOT EXISTS (SELECT 1 FROM followups nf WHERE nf.lead_id = leads.id AND nf.status = 'completed' AND nf.deleted_at IS NULL)
             AND NOT EXISTS (SELECT 1 FROM meetings nm WHERE nm.lead_id = leads.id AND nm.status = 'completed' AND nm.deleted_at IS NULL)";
         $overdue = "EXISTS (SELECT 1 FROM followups odf WHERE odf.lead_id = leads.id AND odf.status = 'pending' AND odf.deleted_at IS NULL AND odf.scheduled_at < {$now})";
         $nextAction = "EXISTS (SELECT 1 FROM followups pf WHERE pf.lead_id = leads.id AND pf.status = 'pending' AND pf.deleted_at IS NULL AND pf.scheduled_at >= {$now})

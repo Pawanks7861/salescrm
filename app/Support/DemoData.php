@@ -32,7 +32,4 @@ final class DemoData
         'Manish Solanki', 'Neha Shah', 'Nikhil Chauhan', 'Pallavi Sawant', 'Pooja Mehta', 'Rakesh Patel',
         'Ritu Agarwal', 'Rohan Kulkarni', 'Sneha Iyer', 'Suresh Nair', 'Swati Deshmukh', 'Vikram Singh',
     ];
-
-    /** Telephony providers that only exist for local development. */
-    public const TEST_TELEPHONY_PROVIDERS = ['fake'];
 }

@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports;
 
-use App\Models\CallDisposition;
 use App\Models\Campaign;
 use App\Models\FacebookForm;
 use App\Models\FollowupType;
@@ -109,13 +108,6 @@ class ReportLookups
         $this->cache['meetingTypes'] ??= MeetingType::query()->pluck('name', 'id');
 
         return $id ? ($this->cache['meetingTypes'][$id] ?? 'Unknown') : 'None';
-    }
-
-    public function dispositionName(?int $id): string
-    {
-        $this->cache['dispositions'] ??= CallDisposition::query()->pluck('name', 'id');
-
-        return $id ? ($this->cache['dispositions'][$id] ?? 'Unknown') : 'No disposition';
     }
 
     public function formName(?string $formId): string

@@ -9,7 +9,6 @@ import AppIcon from '@/Components/ui/AppIcon.vue';
 import BrandMark from '@/Components/ui/BrandMark.vue';
 import ConfirmDialog from '@/Components/ui/ConfirmDialog.vue';
 import PoweredBy from '@/Components/ui/PoweredBy.vue';
-import SoftphoneWidget from '@/Components/calls/SoftphoneWidget.vue';
 import ToastContainer from '@/Components/ui/ToastContainer.vue';
 import GlobalLeadSearch from '@/Components/leads/GlobalLeadSearch.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
@@ -65,7 +64,7 @@ const hasRoute = (name) => {
 };
 
 // Errors raised by services that are not tied to a form field.
-const GENERAL_ERROR_KEYS = ['user', 'role', 'permissions', 'rule', 'general', 'record', 'duplicate', 'assigned_to', 'lost_reason_id', 'status_id', 'file', 'status', 'disposition_id', 'next_action', 'notes'];
+const GENERAL_ERROR_KEYS = ['user', 'role', 'permissions', 'rule', 'general', 'record', 'duplicate', 'assigned_to', 'lost_reason_id', 'status_id', 'file', 'status', 'next_action', 'notes'];
 
 const showFlash = (props) => {
     const key = JSON.stringify(props.flash ?? {});
@@ -201,6 +200,5 @@ onUnmounted(() => listeners.splice(0).forEach((off) => off()));
 
         <ToastContainer />
         <ConfirmDialog />
-        <SoftphoneWidget v-if="hasRoute('telephony.config') && can('call.make', 'call.receive')" />
     </div>
 </template>

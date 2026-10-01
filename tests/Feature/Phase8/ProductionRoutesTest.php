@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,7 +33,7 @@ test('every route is authenticated except the documented public endpoints', func
     // Guest auth screens, uptime probe, signed/secret-checked provider callbacks, public branding assets.
     $public = [
         'login', 'forgot-password', 'reset-password', 'reset-password/*', 'health',
-        'webhooks/meta/*', 'webhooks/telephony/*', 'branding/*', 'sanctum/csrf-cookie',
+        'webhooks/meta/*', 'branding/*', 'sanctum/csrf-cookie',
     ];
 
     $unexpected = collect(Route::getRoutes()->getRoutes())
@@ -45,14 +44,6 @@ test('every route is authenticated except the documented public endpoints', func
         ->values();
 
     expect($unexpected->all())->toBe([]);
-});
-
-test('the local simulator routes 404 in production', function () {
-    app()->detectEnvironment(fn () => 'production');
-    $org = salesOrg();
-    $this->withoutMiddleware(ValidateCsrfToken::class);
-
-    $this->actingAs($org->rahul)->postJson('/telephony/fake/incoming', ['number' => '+919800000000'])->assertNotFound();
 });
 
 test('the meta test-lead command refuses production', function () {

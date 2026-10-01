@@ -1,10 +1,10 @@
 # Sales CRM
 
-Laravel 12 · Vue 3 · Inertia · Tailwind · MySQL. Lead management for Facebook Lead Ads with strict RBAC, audit logging, follow-ups, meetings with a calendar, conflict detection and reminders, Exotel telephony (click-to-call, browser calling, call recording), and permission-scoped reporting and analytics.
+Laravel 12 · Vue 3 · Inertia · Tailwind · MySQL. Lead management for Facebook Lead Ads with strict RBAC, audit logging, follow-ups, meetings with a calendar, conflict detection and reminders, and permission-scoped reporting and analytics.
 
-Architecture and design: [docs/CRM_ARCHITECTURE.md](docs/CRM_ARCHITECTURE.md) (plus `DATABASE_SCHEMA`, `PERMISSIONS`, `SECURITY`, `FACEBOOK_INTEGRATION`, `MEETING_MODULE`, `LEAD_MODULE`, `FOLLOWUP_MODULE`, `TELEPHONY_MODULE`, `REPORTING_MODULE`, `BROWSER_NOTIFICATIONS` in `docs/`).
+Architecture and design: [docs/CRM_ARCHITECTURE.md](docs/CRM_ARCHITECTURE.md) (plus `DATABASE_SCHEMA`, `PERMISSIONS`, `SECURITY`, `FACEBOOK_INTEGRATION`, `MEETING_MODULE`, `LEAD_MODULE`, `FOLLOWUP_MODULE`, `REPORTING_MODULE`, `BROWSER_NOTIFICATIONS` in `docs/`).
 
-**Access model: Own / All.** Admins and Super Admins (`*.view_all`) see everything, including unassigned leads. Every other user, including Sales Managers by default, sees only leads assigned to them and the follow-ups, meetings and calls on those leads (or assigned to them). There is no team-based visibility. The Teams screens were removed. Legacy `teams` / `team_users` tables and `team_id` / `manager_id` columns are kept but unused. See [docs/CRM_ARCHITECTURE.md §2.4](docs/CRM_ARCHITECTURE.md#24-access-model-own--all-team-visibility-removed).
+**Access model: Own / All.** Admins and Super Admins (`*.view_all`) see everything, including unassigned leads. Every other user, including Sales Managers by default, sees only leads assigned to them and the follow-ups and meetings on those leads (or assigned to them). There is no team-based visibility. The Teams screens were removed. Legacy `teams` / `team_users` tables and `team_id` / `manager_id` columns are kept but unused. See [docs/CRM_ARCHITECTURE.md §2.4](docs/CRM_ARCHITECTURE.md#24-access-model-own--all-team-visibility-removed).
 
 Release **1.0.0**. Going live: [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) · running it: [docs/OPERATIONS.md](docs/OPERATIONS.md) · acceptance: [docs/UAT_CHECKLIST.md](docs/UAT_CHECKLIST.md).
 
@@ -37,7 +37,7 @@ Everywhere else, create the first Super Admin with `php artisan crm:create-super
 
 **Local development only** — demo accounts below use a shared password. **DO NOT USE DEMO CREDENTIALS IN PRODUCTION.**
 The demo seeders throw an exception outside `local`/`testing`.
-In the `local` environment demo users are also created (`admin@`, `manager@`, `rahul@`, `priya@salescrm.local`, password `Password@123`) together with 26 demo leads, campaigns, assignment rules, demo follow-ups (overdue, today, upcoming, completed with a next follow-up) and demo meetings (today, tomorrow, rescheduled, completed, cancelled, internal). Reporting demo data adds another executive (`arjun@salescrm.local`), historical calls, a repeat Meta enquiry and a no-show meeting (local only; `ReportingDemoSeeder`).
+In the `local` environment demo users are also created (`admin@`, `manager@`, `rahul@`, `priya@salescrm.local`, password `Password@123`) together with 26 demo leads, campaigns, assignment rules, demo follow-ups (overdue, today, upcoming, completed with a next follow-up) and demo meetings (today, tomorrow, rescheduled, completed, cancelled, internal). Reporting demo data adds another executive (`arjun@salescrm.local`), a repeat Meta enquiry and a no-show meeting (local only; `ReportingDemoSeeder`).
 
 After adding permissions to `App\Support\Permissions` or settings to `App\Support\SettingDefinitions`, re-run:
 
@@ -50,8 +50,8 @@ php artisan db:seed --class=CoreSeeder
 Follow-up and meeting reminders need **both** the scheduler and a queue worker (`QUEUE_CONNECTION=database`):
 
 ```powershell
-php artisan queue:work --queue=default,integrations --tries=1  # reminders, notifications, Meta lead processing, call recordings
-php artisan schedule:work         # reminders every minute; telephony:reconcile-pending every 5 min; meta:retry-failed every 10 min; meta:check / meta:prune-events / telephony:prune daily (local dev)
+php artisan queue:work --queue=default,integrations --tries=1  # reminders, notifications, Meta lead processing
+php artisan schedule:work         # reminders every minute; meta:retry-failed every 10 min; meta:check / meta:prune-events daily (local dev)
 ```
 
 Production cron (every minute): `* * * * * cd /path/to/salescrm && php artisan schedule:run >> /dev/null 2>&1`, plus a supervised `queue:work` (Supervisor / systemd / cPanel examples and failed-job commands in [docs/OPERATIONS.md](docs/OPERATIONS.md)). Run `php artisan queue:restart` on every deploy.
@@ -74,28 +74,15 @@ The webhook URL is `https://YOUR-CRM/webhooks/meta/leads` (Page object, `leadgen
 
 Commands: `meta:sync`, `meta:check`, `meta:retry-failed`, `meta:prune-events`. For local testing without Meta, run `php artisan meta:test-lead --setup` (local/testing environments only). Full guide: [docs/FACEBOOK_INTEGRATION.md](docs/FACEBOOK_INTEGRATION.md).
 
-## Telephony (Exotel)
+## Telephony — removed
 
-`/calls` (call history, scoped by `call.view` / `call.view_all`), a **Call** button and Calls tab on each lead, and a softphone widget in the layout (incoming screen-pop, mute / hold / end, required call outcome). Configure in Admin → Integrations → Telephony (`call.configure`): numbers (ExoPhones), one calling account per agent, dispositions, recording storage and retention, health check.
+The telephony / calling module (Phase 6) has been removed: there is no call history, click-to-call, browser softphone, call recording, disposition or calling-provider integration. Lead phone numbers are still stored, searchable and shown on Lead 360 as a plain `tel:` link that opens the user's own dialer, and follow-ups of type "Call" remain ordinary follow-ups.
 
-Local development without Exotel: set `TELEPHONY_DRIVER=fake` (only works when `APP_ENV` is `local` or `testing`), enable the integration in Admin → Telephony, create a calling account for your user, and use the simulator panel in the softphone. No real calls are placed.
-
-### Production deployment
-
-1. **HTTPS is required** — for browser microphone access (WebRTC) and for provider callbacks.
-2. Set `TELEPHONY_DRIVER=exotel` and `EXOTEL_ACCOUNT_SID`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_SUBDOMAIN`, `EXOTEL_WEBHOOK_SECRET`, `EXOTEL_DEFAULT_CALLER_ID` in `.env` (never in the database, docs or tickets). Browser calling also needs `EXOTEL_WEBRTC_ACCESS_TOKEN` and `EXOTEL_WEBRTC_SDK_URL`. Then run `php artisan config:cache`.
-3. Callback URLs in the Exotel call flow: `https://YOUR-CRM/webhooks/telephony/exotel/status?token=<EXOTEL_WEBHOOK_SECRET>` and a Passthru applet pointing to `.../webhooks/telephony/exotel/passthru?token=<secret>`. The admin page shows these URLs without the secret. Optionally restrict source IPs with `EXOTEL_WEBHOOK_ALLOWED_IPS`.
-4. Caller ID: add the ExoPhones under Numbers and mark one as the default.
-5. Agents: create a calling account per user with a registered phone (click-to-call) and/or an Exotel app user id (browser calling). Agents must allow microphone access for the CRM site.
-6. Recording: before enabling it, **review customer consent requirements** (add an announcement in the Exotel flow). Choose storage (`provider` or `private_storage`) and retention (30 days – 3 years) in Admin → Telephony. Recording playback is proxied through the CRM; the provider URL is never exposed.
-7. Run the queue worker (the `integrations` queue) and the scheduler (`telephony:reconcile-pending` every 5 minutes, `telephony:prune` daily).
-8. The fake driver refuses to start outside local/testing, so a mis-set `TELEPHONY_DRIVER=fake` fails loudly instead of faking calls.
-
-Full guide: [docs/TELEPHONY_MODULE.md](docs/TELEPHONY_MODULE.md). There is no call export and no bulk recording download.
+Upgrading an installation that used telephony: back up, deploy and run `php artisan migrate --force` (the `remove_telephony_module` migration drops the call tables and removes the call permissions and telephony settings). Then remove the obsolete telephony keys from the server `.env` and, if wanted, back up and delete `storage/app/private/call-recordings/` by hand. See [docs/OPERATIONS.md](docs/OPERATIONS.md#telephony-removal-manual-cleanup).
 
 ## Reports
 
-`/reports` (Report centre) with Sales overview, Pipeline, Funnel, Lost leads, Lead analytics, Ageing & neglected, Assignments, Salesperson performance, Activity, Response time, Calls, Follow-ups, Meetings and Sources/Campaigns/Meta. Pick a date preset or custom range (CRM timezone) and optional salesperson (admins only), source, campaign, status, priority, city or state filters. Filter state lives in the URL, so a view can be bookmarked. Click a number to open the matching leads, calls, follow-ups or meetings.
+`/reports` (Report centre) with Sales overview, Pipeline, Funnel, Lost leads, Lead analytics, Ageing & neglected, Assignments, Salesperson performance, Activity, Response time, Follow-ups, Meetings and Sources/Campaigns/Meta. Pick a date preset or custom range (CRM timezone) and optional salesperson (admins only), source, campaign, status, priority, city or state filters. Filter state lives in the URL, so a view can be bookmarked. Click a number to open the matching leads, follow-ups or meetings.
 
 - **Scope:** `report.view` = own data ("My", sales users), `report.view_all` = company including unassigned leads ("Company", admins). Every total, chart, filter option and export uses the same scope. Tampered user filters and any team parameter are ignored.
 - **Exports:** CSV of one report table, only with `report.export` (Admin by default; **not** Sales Managers or Executives, who get 403 plus an audit entry). Files are private, owner-only and deleted after 24 h (`reports:prune-exports`, hourly). Exports above 2,000 rows are queued and need the queue worker.
@@ -136,7 +123,7 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache &&
 php artisan app:production-check                                             # PASS/WARN/FAIL; exit 1 on any FAIL
 ```
 
-`GET /health` returns `{"status":"ok"}` (or 503) for uptime monitors. Security headers and a nonce-based Content-Security-Policy are sent by the app (`config/security.php`). The fake telephony driver, demo seeders, `meta:test-lead` and `crm:seed-performance` refuse to run outside local/testing. Full runbook, rollback and go-live checklists: [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md).
+`GET /health` returns `{"status":"ok"}` (or 503) for uptime monitors. Security headers and a nonce-based Content-Security-Policy are sent by the app (`config/security.php`). Demo seeders, `meta:test-lead` and `crm:seed-performance` refuse to run outside local/testing. Full runbook, rollback and go-live checklists: [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md).
 
 ## Tests
 

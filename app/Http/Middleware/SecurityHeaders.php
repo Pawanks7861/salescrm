@@ -19,8 +19,7 @@ class SecurityHeaders
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        // Microphone is needed by browser calling (Exotel WebRTC) on the CRM's own origin only.
-        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()');
+        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
 
         if ($request->isSecure()) {
@@ -45,17 +44,14 @@ class SecurityHeaders
 
     private function policy(string $nonce, bool $secure): string
     {
-        $exotel = (array) config('security.csp.exotel_hosts', []);
-        $sdkOrigin = $this->origin((string) config('telephony.exotel.webrtc_sdk_url'));
-
         $directives = [
             'default-src' => ["'self'"],
-            'script-src' => ["'self'", "'nonce-{$nonce}'", $sdkOrigin, ...(array) config('security.csp.extra_script_src', [])],
+            'script-src' => ["'self'", "'nonce-{$nonce}'", ...(array) config('security.csp.extra_script_src', [])],
             'style-src' => ["'self'", "'unsafe-inline'", 'https://fonts.bunny.net'],
             'font-src' => ["'self'", 'data:', 'https://fonts.bunny.net'],
             'img-src' => ["'self'", 'data:', 'blob:', 'https://*.fbcdn.net', 'https://*.fbsbx.com'],
-            'media-src' => ["'self'", 'blob:', ...$exotel],
-            'connect-src' => ["'self'", ...$exotel, ...(array) config('security.csp.fcm_hosts', []), ...(array) config('security.csp.extra_connect_src', [])],
+            'media-src' => ["'self'", 'blob:'],
+            'connect-src' => ["'self'", ...(array) config('security.csp.fcm_hosts', []), ...(array) config('security.csp.extra_connect_src', [])],
             'worker-src' => ["'self'"],
             'manifest-src' => ["'self'"],
             'frame-src' => ["'self'"],
@@ -74,14 +70,5 @@ class SecurityHeaders
         }
 
         return implode('; ', $parts);
-    }
-
-    private function origin(string $url): ?string
-    {
-        $parts = parse_url($url);
-
-        return isset($parts['scheme'], $parts['host']) && $parts['scheme'] === 'https'
-            ? 'https://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '')
-            : null;
     }
 }

@@ -71,16 +71,6 @@ class ActivityService
 
     public const MEETING_NOTE = 'meeting_note';
 
-    public const CALL_STARTED = 'call_started';
-
-    public const CALL_COMPLETED = 'call_completed';
-
-    public const CALL_UNANSWERED = 'call_unanswered';
-
-    public const CALL_MISSED = 'call_missed';
-
-    public const CALL_OUTCOME = 'call_outcome';
-
     public function record(Model $subject, string $type, string $description, array $properties = [], ?int $userId = null): Activity
     {
         return Activity::create([

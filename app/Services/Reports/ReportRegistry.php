@@ -20,7 +20,6 @@ final class ReportRegistry
         Definitions\SalesPerformanceReport::SLUG => Definitions\SalesPerformanceReport::class,
         Definitions\ActivityReport::SLUG => Definitions\ActivityReport::class,
         Definitions\ResponseTimeReport::SLUG => Definitions\ResponseTimeReport::class,
-        Definitions\CallsReport::SLUG => Definitions\CallsReport::class,
         Definitions\FollowupsReport::SLUG => Definitions\FollowupsReport::class,
         Definitions\MeetingsReport::SLUG => Definitions\MeetingsReport::class,
         Definitions\CampaignsReport::SLUG => Definitions\CampaignsReport::class,

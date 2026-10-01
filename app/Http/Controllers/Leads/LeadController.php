@@ -5,12 +5,10 @@ namespace App\Http\Controllers\Leads;
 use App\Enums\LeadPriority;
 use App\Enums\MeetingStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Presenters\CallPresenter;
 use App\Http\Presenters\FollowupPresenter;
 use App\Http\Presenters\LeadPresenter;
 use App\Http\Presenters\MeetingPresenter;
 use App\Http\Requests\Leads\LeadRequest;
-use App\Models\Call;
 use App\Models\FacebookForm;
 use App\Models\FacebookPage;
 use App\Models\FacebookWebhookEvent;
@@ -33,7 +31,6 @@ use App\Services\Leads\LeadVisibility;
 use App\Services\Meetings\MeetingOptions;
 use App\Services\Meetings\MeetingParticipantService;
 use App\Services\Meetings\MeetingQueryService;
-use App\Services\Telephony\CallService;
 use App\Support\CrmTime;
 use App\Support\LeadValue;
 use App\Support\Permissions;
@@ -52,8 +49,6 @@ class LeadController extends Controller
     private const FOLLOWUP_LIMIT = 100;
 
     private const MEETING_LIMIT = 100;
-
-    private const CALL_LIMIT = 50;
 
     public function __construct(
         private readonly LeadService $leads,
@@ -254,20 +249,7 @@ class LeadController extends Controller
                 ->map(fn (Meeting $m) => $this->meetingPresenter->row($m, $user))
             : collect();
 
-        $calls = $user->can('viewAny', Call::class)
-            ? Call::query()->visibleTo($user)->where('calls.lead_id', $lead->id)
-                ->with(array_values(array_filter(CallPresenter::ROW_WITH, fn (string $r) => ! str_starts_with($r, 'lead:'))))
-                ->orderByDesc('started_at')
-                ->limit(self::CALL_LIMIT)
-                ->get()
-                ->each(fn (Call $c) => $c->setRelation('lead', $lead))
-                ->map(fn (Call $c) => app(CallPresenter::class)->row($c, $user))
-            : collect();
-        $calling = $this->callingOptions($lead, $user);
-
         return Inertia::render('Leads/Show', [
-            'calls' => $calls->values(),
-            'calling' => $calling,
             'lead' => [
                 ...$this->presenter->row($lead, $user),
                 ...$lead->only('first_name', 'last_name', 'alternate_phone', 'designation', 'country', 'pincode', 'lost_reason_notes'),
@@ -305,7 +287,6 @@ class LeadController extends Controller
                 'notes' => $notes->count(),
                 'attachments' => count($attachments),
                 'enquiries' => $lead->enquiries()->count(),
-                'calls' => $calls->count(),
             ],
             'options' => [
                 'statuses' => $this->options->statuses(),
@@ -328,8 +309,6 @@ class LeadController extends Controller
                 'downloadAttachment' => $user->can('downloadAttachment', $lead),
                 'createFollowup' => $canCreateFollowup,
                 'createMeeting' => $canCreateMeeting,
-                'viewCalls' => $user->can('viewAny', Call::class),
-                'call' => $calling !== null && $calling['enabled'],
             ],
         ]);
     }
@@ -396,31 +375,6 @@ class LeadController extends Controller
      * Lead 360 "Integration" section. Meta ids and local names only; the
      * event ledger status is shown only to facebook.manage users.
      */
-    /**
-     * Call button data. The browser only ever sends a contact FIELD name back
-     * (phone / alternate_phone); the server resolves the number.
-     */
-    private function callingOptions(Lead $lead, User $user): ?array
-    {
-        if ($lead->trashed() || ! $user->hasPermission(Permissions::CALL_MAKE)) {
-            return null;
-        }
-
-        $availability = app(CallService::class)->availability($user);
-        $contacts = collect([
-            ['field' => 'phone', 'label' => 'Phone', 'number' => $lead->phone],
-            ['field' => 'alternate_phone', 'label' => 'Alternate phone', 'number' => $lead->alternate_phone],
-        ])->filter(fn ($c) => filled($c['number']))->values();
-
-        return [
-            'enabled' => $availability['enabled'] && $contacts->isNotEmpty(),
-            'reason' => $contacts->isEmpty() ? 'This lead has no phone number.' : $availability['reason'],
-            'modes' => $availability['modes'],
-            'default_mode' => $availability['default'],
-            'contacts' => $contacts,
-        ];
-    }
-
     private function facebookSummary(Lead $lead, User $user): ?array
     {
         if (! $lead->facebook_lead_id && ! $lead->facebook_form_id) {

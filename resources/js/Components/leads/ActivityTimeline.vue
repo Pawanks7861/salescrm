@@ -60,11 +60,6 @@ const icons = {
     meeting_cancelled: ['ban', 'bg-slate-200 text-slate-600'],
     meeting_completed: ['check', 'bg-emerald-100 text-emerald-600'],
     meeting_no_show: ['warning', 'bg-red-100 text-red-600'],
-    call_started: ['phone-outgoing', 'bg-sky-100 text-sky-600'],
-    call_completed: ['phone', 'bg-emerald-100 text-emerald-600'],
-    call_unanswered: ['phone-missed', 'bg-slate-200 text-slate-600'],
-    call_missed: ['phone-missed', 'bg-red-100 text-red-600'],
-    call_outcome: ['check', 'bg-teal-100 text-teal-600'],
 };
 const iconFor = (type) => icons[type] ?? ['info', 'bg-slate-100 text-slate-500'];
 </script>

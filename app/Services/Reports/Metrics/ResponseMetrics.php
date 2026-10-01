@@ -2,7 +2,6 @@
 
 namespace App\Services\Reports\Metrics;
 
-use App\Enums\CallStatus;
 use App\Enums\FollowupOutcome;
 use App\Enums\FollowupStatus;
 use App\Enums\MeetingOutcome;
@@ -20,12 +19,11 @@ use Illuminate\Support\Facades\DB;
  * Speed of response for the acquisition cohort (leads created in the period).
  *
  *  First Contact          = earliest moment the lead was actually reached:
- *                           a connected call (answered_at), a follow-up
- *                           completed with a contact outcome, or a meeting
- *                           completed with a contact outcome.
- *  First Response Attempt = earliest outreach of any result: an outbound call
- *                           (started_at), any completed follow-up, or the
- *                           first contact itself if that came first.
+ *                           a follow-up completed with a contact outcome, or
+ *                           a meeting completed with a contact outcome.
+ *  First Response Attempt = earliest outreach of any result: any completed
+ *                           follow-up, or the first contact itself if that
+ *                           came first.
  *
  * Activity is counted whoever performed it; negative gaps (activity logged
  * before the lead record, e.g. imports) count as 0.
@@ -55,20 +53,17 @@ class ResponseMetrics
     {
         $leads ??= $q->cohort();
 
-        $connected = "'".implode("','", CallStatus::connectedValues())."'";
         $contactFollowup = "'".implode("','", array_map(fn ($o) => $o->value, array_filter(FollowupOutcome::cases(), fn ($o) => $o->countsAsContact())))."'";
         $contactMeeting = "'".implode("','", array_map(fn ($o) => $o->value, array_filter(MeetingOutcome::cases(), fn ($o) => $o->countsAsContact())))."'";
         $completed = FollowupStatus::Completed->value;
         $meetingCompleted = MeetingStatus::Completed->value;
 
-        $outboundCall = "(SELECT MIN(rc.started_at) FROM calls rc WHERE rc.lead_id = leads.id AND rc.direction = 'outbound')";
         $anyFollowup = "(SELECT MIN(rf.completed_at) FROM followups rf WHERE rf.lead_id = leads.id AND rf.status = '{$completed}' AND rf.deleted_at IS NULL)";
-        $connectedCall = "(SELECT MIN(COALESCE(rc2.answered_at, rc2.started_at)) FROM calls rc2 WHERE rc2.lead_id = leads.id AND rc2.status IN ({$connected}))";
         $contactFu = "(SELECT MIN(rf2.completed_at) FROM followups rf2 WHERE rf2.lead_id = leads.id AND rf2.status = '{$completed}' AND rf2.outcome IN ({$contactFollowup}) AND rf2.deleted_at IS NULL)";
         $contactMtg = "(SELECT MIN(rm.completed_at) FROM meetings rm WHERE rm.lead_id = leads.id AND rm.status = '{$meetingCompleted}' AND rm.outcome IN ({$contactMeeting}) AND rm.deleted_at IS NULL)";
 
-        $firstContact = ReportSql::earliest($connectedCall, $contactFu, $contactMtg);
-        $firstAttempt = ReportSql::earliest($outboundCall, $anyFollowup, $connectedCall, $contactFu, $contactMtg);
+        $firstContact = ReportSql::earliest($contactFu, $contactMtg);
+        $firstAttempt = ReportSql::earliest($anyFollowup, $contactFu, $contactMtg);
 
         $inner = (clone $leads)->toBase()
             ->select('leads.id', 'leads.created_at', 'leads.assigned_to')

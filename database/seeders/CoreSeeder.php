@@ -16,7 +16,6 @@ class CoreSeeder extends Seeder
             LeadReferenceSeeder::class,
             FollowupReferenceSeeder::class,
             MeetingReferenceSeeder::class,
-            TelephonyReferenceSeeder::class,
         ]);
     }
 }

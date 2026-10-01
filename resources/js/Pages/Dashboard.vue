@@ -22,7 +22,6 @@ const props = defineProps({
     sales: { type: Object, default: null },
     meetings: { type: Object, default: null },
     facebook: { type: Object, default: null },
-    calls: { type: Object, default: null },
     reportKpis: { type: Object, default: null },
 });
 
@@ -125,37 +124,7 @@ const greeting = computed(() => {
                 </div>
             </div>
 
-            <div v-if="meetings || recentAudit || facebook || calls" class="space-y-5">
-                <div v-if="calls" class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title">{{ calls.scope === 'My' ? 'My calls' : `${calls.scope} calls` }}</h2>
-                        <Link :href="route('calls.index')" class="text-xs font-medium text-brand-600 hover:underline">All calls</Link>
-                    </div>
-                    <div class="grid grid-cols-3 divide-x divide-slate-100 text-center">
-                        <Link :href="route('calls.index', { today: 1 })" class="px-2 py-2.5 hover:bg-slate-50">
-                            <p class="text-lg font-semibold text-slate-900">{{ calls.counts.today }}</p>
-                            <p class="text-2xs text-slate-500">Calls today</p>
-                        </Link>
-                        <Link :href="route('calls.index', { today: 1, status: ['missed'] })" class="px-2 py-2.5 hover:bg-slate-50">
-                            <p class="text-lg font-semibold" :class="calls.counts.missed_today ? 'text-red-600' : 'text-slate-900'">{{ calls.counts.missed_today }}</p>
-                            <p class="text-2xs text-slate-500">Missed today</p>
-                        </Link>
-                        <Link :href="route('calls.index', { missing_disposition: 1 })" class="px-2 py-2.5 hover:bg-slate-50">
-                            <p class="text-lg font-semibold" :class="calls.counts.awaiting_disposition ? 'text-amber-700' : 'text-slate-900'">{{ calls.counts.awaiting_disposition }}</p>
-                            <p class="text-2xs text-slate-500">Need outcome</p>
-                        </Link>
-                    </div>
-                    <ul v-if="calls.awaiting.length" class="divide-y divide-slate-100 border-t border-slate-100">
-                        <li v-for="c in calls.awaiting" :key="c.id" class="flex items-center justify-between gap-2 px-4 py-2 text-xs">
-                            <span class="min-w-0">
-                                <Link :href="route('calls.show', c.id)" class="block truncate font-medium text-slate-800 hover:text-brand-700">{{ c.lead?.full_name ?? c.customer_number ?? c.call_number }}</Link>
-                                <span class="text-2xs text-slate-500">{{ c.direction_label }} · {{ c.duration || c.status_label }} · {{ timeAgo(c.started_at) }}<template v-if="calls.scope !== 'My' && c.agent"> · {{ c.agent.name }}</template></span>
-                            </span>
-                            <Link :href="route('calls.show', c.id)" class="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-semibold text-amber-800 hover:bg-amber-200">Add outcome</Link>
-                        </li>
-                    </ul>
-                </div>
-
+            <div v-if="meetings || recentAudit || facebook" class="space-y-5">
                 <div v-if="facebook" class="panel">
                     <div class="panel-header">
                         <h2 class="panel-title">Facebook Lead Ads</h2>

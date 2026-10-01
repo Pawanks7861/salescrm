@@ -17,14 +17,12 @@ use Database\Seeders\Concerns\LocalDemoOnly;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Local-only data that makes the reports meaningful: spreads the demo status
  * history over each lead's life, adds a second team with its own executive
- * and leads, historical calls with every outcome, a repeat Meta enquiry and
- * a no-show meeting. Refuses to run outside the local environment and skips
- * itself once demo calls exist.
+ * and leads, a repeat Meta enquiry and a no-show meeting. Refuses to run
+ * outside the local environment and skips itself once its executive exists.
  */
 class ReportingDemoSeeder extends Seeder
 {
@@ -35,7 +33,7 @@ class ReportingDemoSeeder extends Seeder
         if (! $this->demoSeedingAllowed()) {
             return;
         }
-        if (DB::table('calls')->where('provider_call_id', 'like', 'DEMO-%')->exists()) {
+        if (User::withTrashed()->where('email', 'arjun@salescrm.local')->exists()) {
             $this->command?->warn('Reporting demo data already present; skipped.');
 
             return;
@@ -51,11 +49,10 @@ class ReportingDemoSeeder extends Seeder
 
         $this->mumbaiTeam($leads, $admin);
         $this->spreadStatusHistory();
-        $this->calls();
         $this->repeatMetaEnquiry();
         $this->noShowMeeting($meetings, $users['rahul@salescrm.local']);
 
-        $this->command?->info('Reporting demo data created (calls: '.DB::table('calls')->where('provider_call_id', 'like', 'DEMO-%')->count().').');
+        $this->command?->info('Reporting demo data created.');
     }
 
     /** Second team so manager isolation is visible in reports. */
@@ -128,62 +125,6 @@ class ReportingDemoSeeder extends Seeder
                 }
             }
         });
-    }
-
-    /** Historical calls (connected, no answer, busy, missed) attributed to each lead's owner. */
-    private function calls(): void
-    {
-        $integration = DB::table('telephony_integrations')->value('id');
-        $outcomes = [['completed', 420], ['no_answer', null], ['completed', 185], ['busy', null], ['completed', 610], ['failed', null]];
-        $n = 0;
-
-        Lead::query()->whereNotNull('assigned_to')->with('assignee:id,team_id')->orderBy('id')->get()->each(function (Lead $lead) use ($integration, $outcomes, &$n) {
-            $created = CarbonImmutable::parse($lead->created_at);
-            $count = 1 + ($lead->id % 3);
-
-            for ($i = 0; $i < $count; $i++) {
-                [$status, $talk] = $outcomes[($lead->id + $i) % count($outcomes)];
-                $started = $created->addMinutes(4 + $i * 90 + ($lead->id % 7) * 3)->min(now()->subMinutes(10));
-                $answered = $talk ? $started->addSeconds(12) : null;
-                $n++;
-
-                DB::table('calls')->insert([
-                    'call_number' => sprintf('DEMO-CALL-%05d', $n),
-                    'client_reference' => (string) Str::uuid(),
-                    'lead_id' => $lead->id,
-                    'agent_user_id' => $lead->assigned_to,
-                    'team_id' => $lead->assignee?->team_id,
-                    'integration_id' => $integration,
-                    'provider' => 'fake',
-                    'provider_call_id' => 'DEMO-'.$n,
-                    'direction' => 'outbound',
-                    'channel' => 'pstn',
-                    'contact_field' => 'phone',
-                    'customer_number_normalized' => $lead->normalized_phone,
-                    'status' => $status,
-                    'started_at' => $started,
-                    'answered_at' => $answered,
-                    'ended_at' => $answered ? $answered->addSeconds($talk) : $started->addSeconds(30),
-                    'ring_duration_seconds' => $talk ? 12 : 30,
-                    'talk_duration_seconds' => $talk,
-                    'total_duration_seconds' => $talk ? $talk + 12 : 30,
-                    'created_at' => $started,
-                    'updated_at' => $started,
-                ]);
-            }
-        });
-
-        // One missed inbound call.
-        $lead = Lead::query()->whereNotNull('assigned_to')->orderByDesc('id')->first();
-        if ($lead) {
-            DB::table('calls')->insert([
-                'call_number' => sprintf('DEMO-CALL-%05d', ++$n), 'client_reference' => (string) Str::uuid(), 'lead_id' => $lead->id,
-                'agent_user_id' => $lead->assigned_to, 'team_id' => $lead->team_id, 'integration_id' => $integration, 'provider' => 'fake',
-                'provider_call_id' => 'DEMO-'.$n, 'direction' => 'inbound', 'channel' => 'pstn', 'customer_number_normalized' => $lead->normalized_phone,
-                'status' => 'missed', 'started_at' => now()->subHours(3), 'ended_at' => now()->subHours(3)->addSeconds(25),
-                'ring_duration_seconds' => 25, 'created_at' => now()->subHours(3), 'updated_at' => now()->subHours(3),
-            ]);
-        }
     }
 
     /** The same person submitting a second Meta form: one lead, two enquiries. */

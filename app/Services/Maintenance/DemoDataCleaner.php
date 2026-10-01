@@ -27,7 +27,6 @@ class DemoDataCleaner
      */
     public const OPERATIONAL_TABLES = [
         'facebook_webhook_events', 'facebook_field_mappings', 'facebook_forms', 'facebook_pages', 'facebook_integrations',
-        'call_events', 'call_recordings', 'calls', 'telephony_users', 'telephony_numbers', 'telephony_integrations',
         'meeting_reminders', 'meeting_participants', 'meetings',
         'followup_reminders', 'followups',
         'lead_note_histories', 'lead_notes', 'lead_custom_field_values', 'lead_status_changes', 'lead_assignments',
@@ -40,7 +39,7 @@ class DemoDataCleaner
     ];
 
     /** Private-disk directories that only hold operational files. */
-    public const FILE_DIRECTORIES = ['leads', 'call-recordings', 'report-exports', 'exports', 'imports', 'tmp'];
+    public const FILE_DIRECTORIES = ['leads', 'report-exports', 'exports', 'imports', 'tmp'];
 
     public function __construct(private readonly SettingService $settings) {}
 
@@ -122,7 +121,7 @@ class DemoDataCleaner
     private function operationalFiles(): array
     {
         $files = [];
-        foreach (['attachments', 'call_recordings', 'report_exports'] as $table) {
+        foreach (['attachments', 'report_exports'] as $table) {
             if (! Schema::hasTable($table)) {
                 continue;
             }

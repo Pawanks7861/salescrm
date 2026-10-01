@@ -86,20 +86,6 @@ final class SettingDefinitions
             'facebook.notify_on_repeat_enquiry' => ['type' => 'boolean', 'label' => 'Notify the owner when an existing lead submits another Meta form', 'default' => true, 'rules' => ['boolean']],
             'facebook.event_retention_days' => ['type' => 'integer', 'label' => 'Keep completed webhook event records for (days)', 'default' => 180, 'rules' => ['required', 'integer', 'min:7', 'max:730']],
 
-            // Managed on Admin → Integrations → Telephony (call.configure), not the generic settings screen.
-            'telephony.number_prefix' => ['type' => 'string', 'label' => 'Call number prefix', 'default' => 'CALL', 'rules' => ['required', 'alpha_dash', 'max:10']],
-            'telephony.require_disposition' => ['type' => 'boolean', 'label' => 'Require disposition for connected calls', 'default' => true, 'rules' => ['boolean']],
-            'telephony.require_disposition_unconnected' => ['type' => 'boolean', 'label' => 'Also require disposition for busy / no-answer / failed outbound calls', 'default' => false, 'rules' => ['boolean']],
-            'telephony.notify_missed_calls' => ['type' => 'boolean', 'label' => 'Notify the lead owner about missed incoming calls', 'default' => true, 'rules' => ['boolean']],
-            'telephony.notes_edit_window_hours' => ['type' => 'integer', 'label' => 'Call notes can be edited for (hours after the call, 0 = no limit)', 'default' => 0, 'rules' => ['required', 'integer', 'min:0', 'max:8760']],
-            'telephony.recording_storage' => ['type' => 'string', 'label' => 'Recording storage', 'default' => 'provider', 'rules' => ['required', 'in:provider,private_storage'],
-                'options' => ['provider' => 'Keep with provider (streamed through the CRM)', 'private_storage' => 'Archive into private CRM storage']],
-            'telephony.recording_retention_days' => ['type' => 'integer', 'label' => 'Keep recordings for (days)', 'default' => 180, 'rules' => ['required', 'integer', 'in:30,90,180,365,730,1095'],
-                'options' => ['30' => '30 days', '90' => '90 days', '180' => '180 days', '365' => '1 year', '730' => '2 years', '1095' => '3 years']],
-            'telephony.recording_notice_enabled' => ['type' => 'boolean', 'label' => 'Play / show a recording notice on recorded calls', 'default' => true, 'rules' => ['boolean']],
-            'telephony.recording_notice_text' => ['type' => 'string', 'label' => 'Recording notice', 'default' => 'This call may be recorded for quality and training purposes.', 'rules' => ['required', 'string', 'max:255']],
-            'telephony.event_retention_days' => ['type' => 'integer', 'label' => 'Keep provider callback payloads for (days)', 'default' => 90, 'rules' => ['required', 'integer', 'min:7', 'max:730']],
-
             'report.qualified_status' => ['type' => 'string', 'label' => 'A lead counts as "qualified" once it reaches this status (or any later non-lost stage)', 'default' => 'interested',
                 'rules' => ['required', 'string', 'exists:lead_statuses,slug'], 'help' => 'Lead status slug, e.g. interested, meeting_scheduled. Stage order follows the status sort order.'],
             'report.response_target_minutes' => ['type' => 'integer', 'label' => 'First-response target (minutes)', 'default' => 15, 'rules' => ['required', 'integer', 'in:5,15,30,60,240,1440'],

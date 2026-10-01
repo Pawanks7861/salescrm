@@ -2,7 +2,7 @@
 
 /*
 | The CRM is a same-origin Inertia app with no public API, so no path sends
-| CORS headers and browsers block every cross-origin read. Meta and Exotel
+| CORS headers and browsers block every cross-origin read. Meta
 | webhooks are server-to-server and do not use CORS. If an API is added
 | later, list its paths and exact origins here; never "*" for anything that
 | uses the session.

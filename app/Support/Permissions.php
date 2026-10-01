@@ -134,30 +134,6 @@ final class Permissions
 
     public const FACEBOOK_MANAGE = 'facebook.manage';
 
-    public const CALL_VIEW = 'call.view';
-
-    public const CALL_VIEW_TEAM = 'call.view_team';
-
-    public const CALL_VIEW_ALL = 'call.view_all';
-
-    public const CALL_MAKE = 'call.make';
-
-    public const CALL_RECEIVE = 'call.receive';
-
-    public const CALL_MANUAL_DIAL = 'call.manual_dial';
-
-    public const CALL_ADD_DISPOSITION = 'call.add_disposition';
-
-    public const CALL_EDIT_NOTES = 'call.edit_notes';
-
-    public const CALL_RECORDING_LISTEN = 'call.recording.listen';
-
-    public const CALL_RECORDING_DOWNLOAD = 'call.recording.download';
-
-    public const CALL_CONFIGURE = 'call.configure';
-
-    public const CALL_MONITOR = 'call.monitor';
-
     public const FILE_VIEW = 'file.view';
 
     public const FILE_UPLOAD = 'file.upload';
@@ -173,7 +149,6 @@ final class Permissions
         self::LEAD_VIEW_TEAM,
         self::FOLLOWUP_VIEW_TEAM,
         self::MEETING_VIEW_TEAM,
-        self::CALL_VIEW_TEAM,
         self::REPORT_VIEW_TEAM,
         self::TEAM_VIEW,
         self::TEAM_MANAGE,
@@ -251,18 +226,6 @@ final class Permissions
             self::SETTINGS_MANAGE => ['module' => 'Settings', 'label' => 'Manage settings'],
 
             self::FACEBOOK_MANAGE => ['module' => 'Integrations', 'label' => 'Manage Facebook integration'],
-
-            self::CALL_VIEW => ['module' => 'Calls', 'label' => 'View own calls'],
-            self::CALL_VIEW_ALL => ['module' => 'Calls', 'label' => 'View all calls'],
-            self::CALL_MAKE => ['module' => 'Calls', 'label' => 'Make outbound calls'],
-            self::CALL_RECEIVE => ['module' => 'Calls', 'label' => 'Receive incoming calls'],
-            self::CALL_MANUAL_DIAL => ['module' => 'Calls', 'label' => 'Dial numbers not linked to a lead'],
-            self::CALL_ADD_DISPOSITION => ['module' => 'Calls', 'label' => 'Add call disposition'],
-            self::CALL_EDIT_NOTES => ['module' => 'Calls', 'label' => 'Edit call notes'],
-            self::CALL_RECORDING_LISTEN => ['module' => 'Calls', 'label' => 'Listen to call recordings'],
-            self::CALL_RECORDING_DOWNLOAD => ['module' => 'Calls', 'label' => 'Download call recordings'],
-            self::CALL_CONFIGURE => ['module' => 'Calls', 'label' => 'Configure telephony'],
-            self::CALL_MONITOR => ['module' => 'Calls', 'label' => 'Monitor live calls & provider events'],
 
             self::FILE_VIEW => ['module' => 'Files', 'label' => 'View attachments'],
             self::FILE_UPLOAD => ['module' => 'Files', 'label' => 'Upload attachments'],

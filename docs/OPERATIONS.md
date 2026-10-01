@@ -8,15 +8,15 @@ Quick health: `php artisan app:production-check` (PASS / WARN / FAIL per area, n
 
 ## 1. Queue workers
 
-Queued work: Meta lead processing, telephony callbacks/recording archive/reconciliation, notifications (mail, push, in-app), report exports. `QUEUE_CONNECTION` must be `database` (default) or `redis`; `sync` would run all of this inside web requests and is flagged FAIL by `app:production-check`.
+Queued work: Meta lead processing, notifications (mail, push, in-app), report exports. `QUEUE_CONNECTION` must be `database` (default) or `redis`; `sync` would run all of this inside web requests and is flagged FAIL by `app:production-check`.
 
-Queues: `default` and `integrations` (`META_QUEUE`, `TELEPHONY_QUEUE`). One worker processing both in priority order is enough for a typical team; add a second process if `integrations` backs up.
+Queues: `default` and `integrations` (`META_QUEUE`). One worker processing both in priority order is enough for a typical team; add a second process if `integrations` backs up.
 
 ```bash
 php artisan queue:work --queue=default,integrations --tries=1 --timeout=120 --sleep=3 --max-time=3600
 ```
 
-`--tries=1`: Meta and telephony retries are managed by their own event ledgers (backoff, max attempts, visible in the Integration health screens), not by the worker. `--max-time` recycles the process hourly (memory hygiene); the supervisor restarts it.
+`--tries=1`: Meta retries are managed by its own event ledger (backoff, max attempts, visible in the Integration health screens), not by the worker. `--max-time` recycles the process hourly (memory hygiene); the supervisor restarts it.
 
 **Supervisor** (`/etc/supervisor/conf.d/salescrm-worker.conf`):
 
@@ -60,7 +60,7 @@ WantedBy=multi-user.target
 * * * * * cd /home/USER/salescrm && php artisan queue:work --queue=default,integrations --tries=1 --timeout=50 --stop-when-empty --max-time=55 >> /dev/null 2>&1
 ```
 
-Latency is then up to one minute; acceptable for reminders, but Meta leads and call callbacks appear with that delay.
+Latency is then up to one minute; acceptable for reminders, but Meta leads appear with that delay.
 
 **Windows (WAMP / on-premise):** browser push needs `OPENSSL_CONF` in the **worker's** environment, or every push fails with an `OPENSSL_CONF` error in the log. PHP reads it at startup, so set it before starting the worker, or system-wide for services and Task Scheduler jobs:
 
@@ -89,7 +89,7 @@ Failed jobs are handled from the CLI only; there is no UI, so job payloads (whic
 | `php artisan queue:flush` | Delete all failed jobs (only after review) |
 | `php artisan queue:prune-failed --hours=720` | Optional housekeeping |
 
-Meta webhook events have their own ledger with a **Retry** action (Integrations → Facebook → Webhook events) and automatic retries (`meta:retry-failed`); calls stuck in a non-final state are closed by `telephony:reconcile-pending`. Prefer those over `queue:retry` for integration issues.
+Meta webhook events have their own ledger with a **Retry** action (Integrations → Facebook → Webhook events) and automatic retries (`meta:retry-failed`). Prefer those over `queue:retry` for integration issues.
 
 ## 2. Scheduler
 
@@ -108,13 +108,11 @@ Inventory (`routes/console.php`; all use `withoutOverlapping`). Times are in the
 | `meetings:dispatch-reminders` | every minute | Meeting reminders |
 | `meta:poll-leads` | every 5 minutes | Pulls the last day of leads for every enabled form (works without a Page webhook) |
 | `meta:retry-failed` | every 10 minutes | Retries failed/pending Meta lead events within the backoff policy |
-| `telephony:reconcile-pending` | every 5 minutes | Closes calls whose final Exotel callback was missed (queries Exotel) |
 | `reports:prune-exports` | hourly | Deletes report export files older than `report.export_retention_hours` (default 24) |
 | `meta:check` | daily 03:15 | Token health (expiring / expired), page subscription check |
 | `meta:prune-events` | daily 03:45 | Removes completed Meta events older than `facebook.event_retention_days` (180) |
-| `telephony:prune` | daily 04:15 | Recording retention and telephony event retention |
 
-`php artisan schedule:list` shows the next run of each task.
+`php artisan schedule:list` shows the next run of each task. The telephony reconciliation and pruning tasks were removed with the telephony module (Phase 6); nothing replaces them.
 
 ## 3. Timezones
 
@@ -123,8 +121,6 @@ Inventory (`routes/console.php`; all use `withoutOverlapping`). Times are in the
 | Application / PHP | `app.timezone = UTC` (fixed; all timestamps are stored in UTC) |
 | MySQL session | `DB_TIMEZONE=+00:00` |
 | Display, reports, "today", working hours, reminders | CRM timezone setting (Settings → General, default `Asia/Kolkata`) |
-| Exotel timestamps | `EXOTEL_TIMEZONE` (Exotel reports IST for Indian accounts) |
-
 The server OS timezone does not matter. Do not change `app.timezone` after go-live.
 
 ## 4. Logging
@@ -142,7 +138,7 @@ Nothing in the application performs backups; they are an infrastructure responsi
 | Item | Why |
 |------|-----|
 | MySQL database | All CRM data, audit logs, settings, encrypted tokens |
-| `storage/app/private/` | Lead attachments, archived recordings (if `private_storage`), report exports (transient) |
+| `storage/app/private/` | Lead attachments, report exports (transient) |
 | `storage/app/branding/` | Logo and favicon |
 | `.env` | Store **separately and encrypted** (password manager / secrets vault). Without the same `APP_KEY`, encrypted tokens and push subscriptions cannot be decrypted |
 
@@ -173,12 +169,12 @@ Take an extra backup **before every deployment** that contains migrations.
 
 Run at go-live and then quarterly. **Never restore over production** as a test.
 
-1. Provision staging with the same release tag and a copy of production `.env` whose `APP_URL`, mail, Meta and Exotel values are replaced with staging values (keep `APP_KEY` so encrypted data can be read), and `MAIL_MAILER` pointed at a capture service.
+1. Provision staging with the same release tag and a copy of production `.env` whose `APP_URL`, mail and Meta values are replaced with staging values (keep `APP_KEY` so encrypted data can be read), and `MAIL_MAILER` pointed at a capture service.
 2. `gunzip < db-YYYY-MM-DD.sql.gz | mysql --defaults-extra-file=... salescrm_staging`
 3. Extract the files archive into `storage/app/`.
 4. `php artisan migrate --force` (only if staging runs a newer release), `optimize:clear`, re-cache, `queue:restart`.
-5. **Disable outbound side effects before starting workers**: disconnect Meta and disable telephony in the staging admin, or leave their env credentials empty, so the restored copy does not call real customers or post to Meta.
-6. Verify: log in as each role, counts of leads/follow-ups/calls match the source, attachments open, audit log intact, `/health` ok.
+5. **Disable outbound side effects before starting workers**: disconnect Meta in the staging admin (or leave its env credentials empty) and point mail and push at test targets, so the restored copy does not contact real customers or post to Meta.
+6. Verify: log in as each role, counts of leads/follow-ups/meetings match the source, attachments open, audit log intact, `/health` ok.
 7. Record duration and data age (RTO/RPO) in the go-live log. Restrict access: a restored copy is production data.
 
 A real production restore follows the same steps after `php artisan down`, stopping workers and cron, with the client's written approval of the data-loss window.
@@ -190,7 +186,7 @@ A real production restore follows the same steps after `php artisan down`, stopp
 | Uptime | External monitor on `GET /health` (200 `{"status":"ok"}` / 503 `fail`; checks app, database, cache; no versions or config exposed; throttled 60/min per IP) |
 | Queue | Worker process up (Supervisor/systemd); `app:production-check` FAILs on jobs waiting > 15 minutes, WARNs on failed jobs |
 | Scheduler | Heartbeat via `app:production-check` |
-| Integrations | Super Admin dashboard widget and Integration health cards (Meta token state, failed events, telephony health check) |
+| Integrations | Super Admin dashboard widget and Integration health cards (Meta token state, failed events) |
 | Errors | `storage/logs/laravel-*.log` at `warning`+; optionally ship to a log service via an extra channel with the redaction tap |
 | Disk | Alert at 80 % of the volume holding `storage/` and MySQL |
 
@@ -198,27 +194,30 @@ Suggested schedule: run `php artisan app:production-check` from cron daily and e
 
 ## 7. Disk capacity
 
-Recordings use CRM disk only when **Settings → Telephony → recording storage = `private_storage`**. In `provider` mode they are streamed from Exotel and use no CRM disk.
-
-```
-Recording disk (GB) ≈ agents × connected calls per agent per day × average talk minutes
-                      × MB per minute × retention days ÷ 1024
-```
-
-Measure MB per minute from a real archived recording (typical telephony MP3 is ~0.1–0.5 MB/min). Example: 20 agents × 30 connected calls × 3 min × 0.25 MB × 180 days ÷ 1024 ≈ **79 GB**. Add 30 % headroom. Shorter retention (`Keep recordings for`) or `provider` mode reduces this; `telephony:prune` deletes expired audio daily.
-
-Other storage: attachments (≤ 10 MB each), report exports (deleted after 24 h), logs (14 days), database (roughly 1–3 GB per 100k leads with their history; check `information_schema.tables` quarterly).
+Storage: attachments (≤ 10 MB each), report exports (deleted after 24 h), logs (14 days), database (roughly 1–3 GB per 100k leads with their history; check `information_schema.tables` quarterly).
 
 ## 8. Retention settings
 
 | Setting | Default | Effect |
 |---------|---------|--------|
-| `telephony.recording_retention_days` | 180 | Recording audio + provider reference removed; call record kept |
-| `telephony.event_retention_days` | 90 | Processed telephony callback events removed |
 | `facebook.event_retention_days` | 180 | Completed Meta webhook events removed (failed/pending kept) |
 | `report.export_retention_hours` | 24 | Export files deleted |
 | Audit logs | never | No automatic pruning |
-| Leads, follow-ups, meetings, calls | never | Business records are not pruned |
+| Leads, follow-ups, meetings | never | Business records are not pruned |
+
+### Telephony removal: manual cleanup
+
+The telephony module was removed (Phase 6, migration `2026_10_01_100000_remove_telephony_module`). The migration drops the call tables, call permissions, telephony settings and the call number sequence, but it **does not touch files or the server `.env`**. After the release has been verified, an operator may clean up the leftovers by hand:
+
+1. **Recordings archive.** If recordings were ever archived to CRM storage, they are in `storage/app/private/call-recordings/`. The application no longer reads this directory. Take a backup first (it may be needed for compliance or a client request), confirm the retention decision with the client, then delete it:
+   ```bash
+   tar -czf /backups/salescrm/call-recordings-$(date +%F).tar.gz -C /var/www/salescrm storage/app/private/call-recordings
+   rm -rf /var/www/salescrm/storage/app/private/call-recordings
+   ```
+   Deployment never deletes this directory automatically.
+2. **Server `.env`.** The old calling-provider and telephony keys (driver, account, API credentials, webhook secret, recording disk, queue) are no longer read. Remove them from the server `.env` and from the secrets vault, and revoke the provider API key and webhook secret in the provider's console.
+3. **Provider console.** Remove the CRM callback URLs from the provider's flows so it stops sending callbacks (they now receive 404).
+4. **Audit history.** Historical `CALL_*` audit rows remain and still display in Admin → Audit logs. Do not delete them.
 
 ## 9. Meta token expiry
 
@@ -232,11 +231,11 @@ Other storage: attachments (≤ 10 MB each), report exports (deleted after 24 h)
 
 ## 11. Performance
 
-Measured on a developer laptop with `php artisan crm:seed-performance` (5,000 leads, 10,000 follow-ups, 5,000 meetings, 20,000 calls; local/testing only, `--purge` removes the generated rows):
+Measured on a developer laptop with `php artisan crm:seed-performance` (5,000 leads, 10,000 follow-ups, 5,000 meetings; local/testing only, `--purge` removes the generated rows):
 
 | Page | Result |
 |------|--------|
-| Lists (leads, follow-ups, meetings, calls) | 0.1–0.6 s, ~20 queries, paginated (25/50/100), no N+1 |
+| Lists (leads, follow-ups, meetings) | 0.1–0.6 s, ~20 queries, paginated (25/50/100), no N+1 |
 | Dashboard | admin 1.6–2.0 s, manager 1.3 s, executive 0.7 s |
 | Reports overview (all data) | ~1.8 s |
 | Pipeline / calendar | Bounded (fixed cards per column; calendar range-limited) |

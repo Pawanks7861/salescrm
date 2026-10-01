@@ -1,6 +1,4 @@
 <script setup>
-import CallButton from '@/Components/calls/CallButton.vue';
-import CallsTable from '@/Components/calls/CallsTable.vue';
 import FollowupActionModals from '@/Components/followups/FollowupActionModals.vue';
 import FollowupCards from '@/Components/followups/FollowupCards.vue';
 import FollowupFormModal from '@/Components/followups/FollowupFormModal.vue';
@@ -39,8 +37,6 @@ const props = defineProps({
     followupForm: { type: Object, default: null },
     meetings: { type: Array, default: () => [] },
     meetingForm: { type: Object, default: null },
-    calls: { type: Array, default: () => [] },
-    calling: { type: Object, default: null },
     counts: Object,
     options: Object,
     can: Object,
@@ -66,7 +62,6 @@ const tabs = computed(() => [
     ...(props.can.viewAttachments ? [{ key: 'attachments', label: 'Attachments', count: props.counts.attachments }] : []),
     ...(props.followupForm ? [{ key: 'followups', label: 'Follow-ups', count: props.counts.followups }] : []),
     ...(props.meetingForm ? [{ key: 'meetings', label: 'Meetings', count: props.counts.meetings }] : []),
-    ...(props.can.viewCalls ? [{ key: 'calls', label: 'Calls', count: props.counts.calls }] : []),
 ]);
 
 const meetingGroups = computed(() => {
@@ -143,7 +138,6 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
                 <Link :href="route('leads.index')" class="hover:text-slate-700">Leads</Link> / <span class="font-mono" :title="`Real ID ${lead.id}`">{{ lead.id }}</span> <span class="text-slate-400">·</span> <span class="font-mono">{{ lead.lead_number }}</span>
             </template>
             <template #actions>
-                <CallButton v-if="calling" :lead-id="lead.id" :calling="calling" />
                 <UiButton v-if="can.update" variant="secondary" icon="edit" :href="route('leads.edit', lead.id)">Edit</UiButton>
                 <UiButton v-if="can.assign" variant="secondary" icon="switch" @click="showAssign = true">{{ lead.assignee ? 'Reassign' : 'Assign' }}</UiButton>
                 <UiButton v-if="can.delete" variant="ghost" icon="archive" @click="archive">Archive</UiButton>
@@ -298,15 +292,6 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
                         <MeetingCards :rows="visibleMeetings" :show-lead="false" @action="meetingAction = $event" />
                         <EmptyState v-if="!visibleMeetings.length" icon="video" :title="`No ${meetingGroups.find((g) => g.key === meetingFilter)?.label.toLowerCase()} meetings`" :description="can.createMeeting ? 'Book a demo, site visit or call with this lead.' : ''" />
                     </div>
-                    <div v-else-if="tab === 'calls'" class="-m-5">
-                        <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3">
-                            <span class="text-xs text-slate-500">{{ calls.length }} call{{ calls.length === 1 ? '' : 's' }}<template v-if="calls.length >= 50"> (latest 50)</template></span>
-                            <Link v-if="calls.length >= 50" :href="route('calls.index', { lead: lead.id })" class="text-xs font-medium text-brand-600 hover:underline">View all</Link>
-                            <CallButton v-if="calling" :lead-id="lead.id" :calling="calling" size="sm" class="ml-auto" />
-                        </div>
-                        <CallsTable :rows="calls" :show-lead="false" show-notes />
-                        <EmptyState v-if="!calls.length" icon="phone" title="No calls yet" :description="calling?.enabled ? 'Use the Call button to call this lead from the CRM.' : ''" />
-                    </div>
                 </div>
             </div>
 
@@ -335,8 +320,7 @@ const assignmentType = { manual: 'Manual', automatic: 'Automatic', round_robin: 
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                            <CallButton v-if="calling" :lead-id="lead.id" :calling="calling" size="sm" />
-                            <a v-else-if="lead.phone" :href="`tel:${lead.phone}`" class="chip-btn"><AppIcon name="phone" class="h-3.5 w-3.5" /> Call</a>
+                            <a v-if="lead.phone" :href="`tel:${lead.phone}`" class="chip-btn"><AppIcon name="phone" class="h-3.5 w-3.5" /> Call</a>
                             <a v-if="lead.email" :href="`mailto:${lead.email}`" class="chip-btn"><AppIcon name="envelope" class="h-3.5 w-3.5" /> Email</a>
                             <button v-if="can.addNote" class="chip-btn" @click="tab = 'notes'"><AppIcon name="chat" class="h-3.5 w-3.5" /> Add note</button>
                             <button v-if="can.createFollowup" class="chip-btn" @click="addingFollowup = true"><AppIcon name="clock" class="h-3.5 w-3.5" /> Follow-up</button>

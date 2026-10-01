@@ -24,8 +24,7 @@ const form = useForm({
     first_name: props.lead?.first_name ?? '',
     last_name: props.lead?.last_name ?? '',
     email: props.lead?.email ?? '',
-    // ?phone= prefill comes from the softphone's "Create lead" for unknown callers.
-    phone: props.lead?.phone ?? (new URLSearchParams(window.location.search).get('phone') || '').slice(0, 30),
+    phone: props.lead?.phone ?? '',
     alternate_phone: props.lead?.alternate_phone ?? '',
     company_name: props.lead?.company_name ?? '',
     designation: props.lead?.designation ?? '',

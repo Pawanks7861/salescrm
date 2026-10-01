@@ -191,7 +191,7 @@
         @apply font-medium text-brand-600 transition hover:text-brand-700 hover:underline;
     }
 
-    /* Accent edge for actionable list items (follow-ups, meetings, calls). */
+    /* Accent edge for actionable list items (follow-ups, meetings). */
     .accent-edge {
         @apply relative before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r-full before:content-[''];
     }
