@@ -1,9 +1,11 @@
 <script setup>
 import Checkbox from '@/Components/Checkbox.vue';
+import AppIcon from '@/Components/ui/AppIcon.vue';
 import FormField from '@/Components/ui/FormField.vue';
 import UiButton from '@/Components/ui/UiButton.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps({
     canResetPassword: { type: Boolean },
@@ -16,6 +18,7 @@ const form = useForm({
     password: '',
     remember: false,
 });
+const showPassword = ref(false);
 
 const submit = () => {
     form.post(route('login'), {
@@ -40,7 +43,12 @@ const submit = () => {
             </FormField>
 
             <FormField label="Password" for="password" :error="form.errors.password">
-                <input id="password" v-model="form.password" type="password" class="form-input" required autocomplete="current-password" />
+                <div class="relative">
+                    <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'" class="form-input pr-10" required autocomplete="current-password" />
+                    <button type="button" class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600" :aria-label="showPassword ? 'Hide password' : 'Show password'" :aria-pressed="showPassword" @click="showPassword = !showPassword">
+                        <AppIcon :name="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4" />
+                    </button>
+                </div>
             </FormField>
 
             <div class="flex items-center justify-between">

@@ -110,7 +110,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 return Inertia::render('Error', ['status' => $status, 'context' => $context])
                     ->toResponse($request)
                     ->setStatusCode($status);
-            } catch (Throwable) {
+            } catch (Throwable $renderError) {
+                report($renderError);
+
                 return response()->view("errors.{$status}", [], $status);
             }
         });

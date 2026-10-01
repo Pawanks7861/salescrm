@@ -33,8 +33,8 @@ class MeetingPresenter
             'start_at' => $meeting->start_at?->toIso8601String(),
             'end_at' => $meeting->end_at?->toIso8601String(),
             'duration_minutes' => $meeting->durationMinutes(),
-            'status' => $meeting->status->value,
-            'status_label' => $meeting->status->label(),
+            'status' => $meeting->status?->value ?? 'scheduled',
+            'status_label' => $meeting->status?->label() ?? 'Scheduled',
             'state' => $this->state($meeting),
             'priority' => $meeting->priority?->value,
             'location_type' => $meeting->location_type?->value,
@@ -134,8 +134,8 @@ class MeetingPresenter
     /** Derived display state: live / upcoming / past for open meetings, else the status. */
     public function state(Meeting $meeting): string
     {
-        if (! $meeting->isOpen()) {
-            return $meeting->status->value;
+        if (! $meeting->status || ! $meeting->isOpen() || ! $meeting->start_at || ! $meeting->end_at) {
+            return $meeting->status?->value ?? 'scheduled';
         }
 
         $now = now();

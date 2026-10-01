@@ -24,6 +24,7 @@ use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 /**
  * Organisation health for admins (Phase 1), the follow-up workspace
@@ -50,37 +51,49 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $stats = [];
-        if ($user->hasPermission(Permissions::USER_VIEW)) {
-            $stats['users_active'] = User::active()->count();
-            $stats['users_inactive'] = User::where('is_active', false)->count();
-        }
-        if ($user->hasPermission(Permissions::LOGIN_HISTORY_VIEW)) {
-            $stats['failed_logins_today'] = LoginHistory::where('event', 'failed')->where('created_at', '>=', today())->count();
-        }
-
-        $recentAudit = $user->hasPermission(Permissions::AUDIT_VIEW)
-            ? AuditLog::with('user:id,name')->latest('id')->limit(10)->get()
-                ->map(fn (AuditLog $log) => [
-                    ...$log->only('id', 'action', 'module', 'description'),
-                    'user' => $log->user?->name,
-                    'created_at' => $log->created_at?->toIso8601String(),
-                ])
-            : null;
-
         return Inertia::render('Dashboard', [
-            'stats' => $stats,
-            'recentAudit' => $recentAudit,
-            'sales' => $this->sales($user),
-            'meetings' => $this->meetings($user),
-            'facebook' => $this->facebook($user),
-            'reportKpis' => app(ReportService::class)->dashboard($user),
-            'lastLogin' => LoginHistory::where('user_id', $user->id)
+            'stats' => $this->safely(function () use ($user) {
+                $stats = [];
+                if ($user->hasPermission(Permissions::USER_VIEW)) {
+                    $stats['users_active'] = User::active()->count();
+                    $stats['users_inactive'] = User::where('is_active', false)->count();
+                }
+                if ($user->hasPermission(Permissions::LOGIN_HISTORY_VIEW)) {
+                    $stats['failed_logins_today'] = LoginHistory::where('event', 'failed')->where('created_at', '>=', today())->count();
+                }
+
+                return $stats;
+            }, []),
+            'recentAudit' => $this->safely(fn () => $user->hasPermission(Permissions::AUDIT_VIEW)
+                ? AuditLog::with('user:id,name')->latest('id')->limit(10)->get()
+                    ->map(fn (AuditLog $log) => [
+                        ...$log->only('id', 'action', 'module', 'description'),
+                        'user' => $log->user?->name,
+                        'created_at' => $log->created_at?->toIso8601String(),
+                    ])
+                : null, null),
+            'sales' => $this->safely(fn () => $this->sales($user), null),
+            'meetings' => $this->safely(fn () => $this->meetings($user), null),
+            'facebook' => $this->safely(fn () => $this->facebook($user), null),
+            'reportKpis' => $this->safely(fn () => app(ReportService::class)->dashboard($user), null),
+            'lastLogin' => $this->safely(fn () => LoginHistory::where('user_id', $user->id)
                 ->where('event', 'login')
                 ->latest('id')
                 ->skip(1)
-                ->first(['ip_address', 'browser', 'platform', 'created_at']),
+                ->first(['ip_address', 'browser', 'platform', 'created_at']), null),
         ]);
+    }
+
+    /** One widget failing must not replace the whole dashboard with an error page. */
+    private function safely(callable $resolve, mixed $fallback): mixed
+    {
+        try {
+            return $resolve();
+        } catch (Throwable $e) {
+            report($e);
+
+            return $fallback;
+        }
     }
 
     /**
@@ -139,6 +152,7 @@ class DashboardController extends Controller
                 ->get()
                 ->unique('lead_id')
                 ->take(self::LIST_LIMIT)
+                ->filter(fn (LeadAssignment $a) => $a->lead !== null)
                 ->map(fn (LeadAssignment $a) => [
                     'id' => $a->lead->id,
                     'lead_number' => $a->lead->lead_number,

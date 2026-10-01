@@ -42,7 +42,8 @@ const salesCards = computed(() => {
     ].filter(Boolean);
 });
 
-const user = computed(() => usePage().props.auth.user);
+const user = computed(() => usePage().props.auth?.user ?? null);
+const firstName = computed(() => (user.value?.name || 'there').split(' ')[0]);
 
 const cards = computed(() =>
     [
@@ -60,7 +61,7 @@ const greeting = computed(() => {
 
 <template>
     <AppLayout title="Dashboard">
-        <PageHeader :title="`${greeting}, ${user.name.split(' ')[0]}`" subtitle="Here is what is happening in your CRM today." />
+        <PageHeader :title="`${greeting}, ${firstName}`" subtitle="Here is what is happening in your CRM today." />
 
         <div v-if="lastLogin" class="mb-5 inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-3 py-2 text-xs text-slate-500">
             <AppIcon name="key" class="h-4 w-4 shrink-0 text-slate-400" />

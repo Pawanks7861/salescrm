@@ -10,6 +10,7 @@ use App\Services\SettingService;
 use App\Support\Navigation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -35,29 +36,29 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'app' => [
-                'name' => fn () => $settings->get('general.crm_name'),
-                'timezone' => fn () => $settings->get('general.timezone'),
-                'company' => fn () => app(BrandingService::class)->companyName(),
-                'logo_url' => fn () => app(BrandingService::class)->url('logo'),
-                'favicon_url' => fn () => app(BrandingService::class)->faviconUrl(),
+                'name' => $this->guard(fn () => $settings->get('general.crm_name'), 'Sales CRM'),
+                'timezone' => $this->guard(fn () => $settings->get('general.timezone'), 'UTC'),
+                'company' => $this->guard(fn () => app(BrandingService::class)->companyName(), 'Sales CRM'),
+                'logo_url' => $this->guard(fn () => app(BrandingService::class)->url('logo'), null),
+                'favicon_url' => $this->guard(fn () => app(BrandingService::class)->faviconUrl(), null),
             ],
             'platform' => [
                 'name' => config('crm.platform.name'),
                 'url' => config('crm.platform.url'),
             ],
             'auth' => [
-                'user' => $user ? fn () => [
+                'user' => $user ? $this->guard(fn () => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'designation' => $user->designation,
                     'role' => $user->role?->only('name', 'slug'),
                     'is_super_admin' => $user->isSuperAdmin(),
-                ] : null,
-                'permissions' => $user ? fn () => $user->permissionNames() : [],
+                ], null) : null,
+                'permissions' => $user ? $this->guard(fn () => $user->permissionNames(), []) : [],
             ],
-            'navigation' => $user ? fn () => Navigation::for($user) : [],
-            'push' => $user ? function () use ($user) {
+            'navigation' => $user ? $this->guard(fn () => Navigation::for($user), []) : [],
+            'push' => $user ? $this->guard(function () use ($user) {
                 $push = app(WebPushService::class);
                 $globally = $push->globallyEnabled();
                 $vapid = $push->isConfigured() && $globally;
@@ -71,15 +72,32 @@ class HandleInertiaRequests extends Middleware
                     'browser' => (bool) $user->browser_notifications_enabled,
                     'sound' => (bool) $user->notification_sound_enabled,
                 ];
-            } : null,
+            }, null) : null,
             'notifications' => [
-                'unread' => $user ? fn () => $user->unreadNotifications()->count() : 0,
+                'unread' => $user ? $this->guard(fn () => $user->unreadNotifications()->count(), 0) : 0,
             ],
             'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-                'download' => fn () => $request->session()->get('download'),
+                'success' => $this->guard(fn () => $request->session()->get('success'), null),
+                'error' => $this->guard(fn () => $request->session()->get('error'), null),
+                'download' => $this->guard(fn () => $request->session()->get('download'), null),
             ],
         ];
+    }
+
+    /**
+     * A shared prop must not take down every signed-in page. The failure is
+     * logged; the screen still opens with a safe fallback.
+     */
+    private function guard(callable $resolve, mixed $fallback): callable
+    {
+        return function () use ($resolve, $fallback) {
+            try {
+                return $resolve();
+            } catch (Throwable $e) {
+                report($e);
+
+                return $fallback;
+            }
+        };
     }
 }

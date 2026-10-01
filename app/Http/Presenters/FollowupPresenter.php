@@ -32,7 +32,7 @@ class FollowupPresenter
             'title' => $followup->displayTitle(),
             'type' => $followup->type?->only('id', 'name', 'color', 'icon'),
             'scheduled_at' => $followup->scheduled_at?->toIso8601String(),
-            'status' => $followup->status->value,
+            'status' => $followup->status?->value ?? 'pending',
             'state' => $this->state($followup),
             'priority' => $followup->priority?->value,
             'outcome' => $followup->outcome?->label(),
@@ -80,7 +80,11 @@ class FollowupPresenter
     public function state(Followup $followup): string
     {
         if ($followup->status !== FollowupStatus::Pending) {
-            return $followup->status->value;
+            return $followup->status?->value ?? 'pending';
+        }
+
+        if (! $followup->scheduled_at) {
+            return 'pending';
         }
 
         if ($followup->scheduled_at->lt(now())) {
