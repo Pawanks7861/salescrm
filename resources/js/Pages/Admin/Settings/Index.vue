@@ -5,7 +5,8 @@ import PageHeader from '@/Components/ui/PageHeader.vue';
 import UiButton from '@/Components/ui/UiButton.vue';
 import UiToggle from '@/Components/ui/UiToggle.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     groups: Object,
@@ -25,6 +26,17 @@ const form = useForm({
 
 const errorFor = (field) => form.errors[`settings.${field.key}`];
 const submit = () => form.put(route('admin.settings.update', props.group), { preserveScroll: true });
+
+const alerting = ref(false);
+const alertEveryone = () => {
+    alerting.value = true;
+    router.post(route('admin.settings.alert'), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            alerting.value = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -87,6 +99,17 @@ const submit = () => form.put(route('admin.settings.update', props.group), { pre
                 </div>
             </form>
         </div>
+
+        <section v-if="group === 'notifications' && can.manage" class="panel mt-4 lg:ml-56">
+            <div class="panel-header">
+                <h2 class="panel-title">Alert every user</h2>
+                <span class="text-xs text-slate-500">One live check, sent now. This is not a new-lead or follow-up test.</span>
+            </div>
+            <div class="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-500">Every active user gets it in their notification list immediately. Browsers and phones that already allowed notifications get the popup at the same time.</p>
+                <UiButton type="button" icon="bell" :loading="alerting" @click="alertEveryone">Alert every user</UiButton>
+            </div>
+        </section>
 
         <section v-if="branding" class="panel mt-4 lg:ml-56" aria-labelledby="branding-title">
             <div class="panel-header">

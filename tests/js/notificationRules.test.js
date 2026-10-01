@@ -19,6 +19,7 @@ describe('event rules', () => {
         expect(normalizeEvent('FOLLOWUP_REMINDER')).toBe('FOLLOWUP_REMINDER');
         expect(normalizeEvent('lead_note')).toBe('COMMENT');
         expect(normalizeEvent('meeting_note')).toBe('COMMENT');
+        expect(normalizeEvent('admin_alert')).toBe('ADMIN_ALERT');
         expect(normalizeEvent('followup_overdue')).toBeNull();
         expect(normalizeEvent('toString')).toBeNull();
         expect(normalizeEvent(undefined)).toBeNull();

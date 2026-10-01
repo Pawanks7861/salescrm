@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\SendFcmNotification;
 use App\Jobs\SendWebPushNotification;
 use App\Models\FollowupReminder;
 use App\Models\User;
@@ -156,20 +157,29 @@ class NotificationsDoctor extends Command
 
             return self::FAILURE;
         }
-        if (! $push->shouldPush($user)) {
+        $fcm = app(FcmService::class);
+        $web = $push->shouldPush($user);
+        $firebase = $fcm->shouldSend($user);
+        if (! $web && ! $firebase) {
             $this->error('This user cannot receive pushes yet (see the rows above).');
 
             return self::FAILURE;
         }
 
         $lead = $type === 'lead';
-        SendWebPushNotification::dispatch($user->id, WebPushChannel::payload(
+        $payload = WebPushChannel::payload(
             'test-'.Str::uuid(),
             $lead ? PushEvent::NEW_LEAD_ASSIGNED : PushEvent::FOLLOWUP_REMINDER,
             $lead ? 'New Lead Assigned' : 'Follow-up Reminder',
             $lead ? 'Test: a new lead has been assigned to you.' : 'Test: your follow-up is due now.',
             route('profile.edit', [], false),
-        ));
+        );
+        if ($web) {
+            SendWebPushNotification::dispatch($user->id, $payload);
+        }
+        if ($firebase) {
+            SendFcmNotification::dispatch($user->id, $payload);
+        }
         $this->info('Test push queued; the queue worker sends it.');
 
         return self::SUCCESS;

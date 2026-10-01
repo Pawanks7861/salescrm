@@ -51,6 +51,9 @@ Route::middleware('throttle:crm')->group(function () {
         ->middleware('permission:settings.manage')
         ->whereIn('group', $groups)
         ->name('settings.update');
+    Route::post('settings/alert-everyone', [SettingController::class, 'alertEveryone'])
+        ->middleware(['permission:settings.manage', 'throttle:sensitive'])
+        ->name('settings.alert');
     Route::middleware(['permission:settings.manage', 'throttle:sensitive'])->group(function () {
         Route::post('branding/{type}', [BrandingController::class, 'store'])->whereIn('type', ['logo', 'favicon'])->name('branding.store');
         Route::delete('branding/{type}', [BrandingController::class, 'destroy'])->whereIn('type', ['logo', 'favicon'])->name('branding.destroy');

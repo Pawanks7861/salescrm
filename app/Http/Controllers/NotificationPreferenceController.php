@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AuditAction;
+use App\Jobs\SendFcmNotification;
 use App\Jobs\SendWebPushNotification;
 use App\Notifications\Channels\WebPushChannel;
 use App\Services\AuditService;
+use App\Services\Notifications\FcmService;
 use App\Services\Notifications\WebPushService;
 use App\Support\PushEvent;
 use Illuminate\Http\JsonResponse;
@@ -43,11 +45,11 @@ class NotificationPreferenceController extends Controller
     }
 
     /**
-     * Sends a real Web Push of the chosen type to the caller's own browsers
-     * only, optionally delayed so the tab can be backgrounded, minimised or
-     * closed first. Not stored as an in-app notification.
+     * Sends a real test to the caller's own browsers only, through Web Push
+     * and FCM when each is ready. Optionally delayed so the tab can be
+     * backgrounded, minimised or closed first. Not stored in-app.
      */
-    public function test(Request $request, WebPushService $push): JsonResponse
+    public function test(Request $request, WebPushService $push, FcmService $fcm): JsonResponse
     {
         $data = $request->validate([
             'event' => ['required', Rule::in(PushEvent::ALL)],
@@ -55,22 +57,34 @@ class NotificationPreferenceController extends Controller
         ]);
 
         $user = $request->user();
-        if (! $push->shouldPush($user)) {
+        $web = $push->shouldPush($user);
+        $firebase = $fcm->shouldSend($user);
+        if (! $web && ! $firebase) {
             return response()->json(['message' => 'Enable browser notifications on this browser first.'], 422);
         }
 
-        [$title, $body] = $data['event'] === PushEvent::NEW_LEAD_ASSIGNED
-            ? ['New Lead Assigned', 'Test: a new lead has been assigned to you.']
-            : ['Follow-up Reminder', 'Test: your follow-up is due now.'];
+        [$title, $body] = match ($data['event']) {
+            PushEvent::NEW_LEAD_ASSIGNED => ['New Lead Assigned', 'Test: a new lead has been assigned to you.'],
+            PushEvent::COMMENT => ['New comment', 'Test: a comment was added for you.'],
+            default => ['Follow-up Reminder', 'Test: your follow-up is due now.'],
+        };
 
         $delay = (int) ($data['delay'] ?? 0);
-        SendWebPushNotification::dispatch($user->id, WebPushChannel::payload(
+        $payload = WebPushChannel::payload(
             'test-'.Str::uuid(),
             $data['event'],
             $title,
             $body,
             route('profile.edit', [], false),
-        ))->delay($delay > 0 ? now()->addSeconds($delay) : null);
+        );
+        $when = $delay > 0 ? now()->addSeconds($delay) : null;
+
+        if ($web) {
+            SendWebPushNotification::dispatch($user->id, $payload)->delay($when);
+        }
+        if ($firebase) {
+            SendFcmNotification::dispatch($user->id, $payload)->delay($when);
+        }
 
         return response()->json(['queued' => true, 'delay' => $delay], 202);
     }

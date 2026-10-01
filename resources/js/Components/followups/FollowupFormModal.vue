@@ -66,6 +66,10 @@ watch(pickedLead, (lead) => (form.lead_id = lead?.id ?? null));
 const canAssign = computed(() => props.options.assignees?.length > 0);
 
 const submit = (confirmDuplicate = false) => {
+    if (!editing.value && !form.lead_id) {
+        form.setError('lead_id', 'Choose a lead from the list under the search box. Typing the name does not select it.');
+        return;
+    }
     form.confirm_duplicate = confirmDuplicate;
     const opts = { preserveScroll: true, onSuccess: () => emit('close') };
     const payload = (data) => ({ ...data, assigned_to: data.assigned_to || null });
@@ -89,7 +93,7 @@ const submit = (confirmDuplicate = false) => {
             </div>
 
             <div class="grid gap-3 p-5 sm:grid-cols-2">
-                <FormField v-if="!editing && !lead" label="Lead" required :error="form.errors.lead_id" class="sm:col-span-2">
+                <FormField v-if="!editing && !lead" label="Lead" required :error="form.errors.lead_id" hint="Click a result in the list, or press Enter. A typed name alone is not a lead." class="sm:col-span-2">
                     <LeadPicker v-model="pickedLead" />
                 </FormField>
 
@@ -139,7 +143,7 @@ const submit = (confirmDuplicate = false) => {
 
             <div class="modal-footer">
                 <UiButton variant="secondary" @click="emit('close')">Cancel</UiButton>
-                <UiButton type="submit" :loading="form.processing" :disabled="!editing && !form.lead_id">{{ editing ? 'Save' : 'Schedule' }}</UiButton>
+                <UiButton type="submit" :loading="form.processing">{{ editing ? 'Save' : 'Schedule' }}</UiButton>
             </div>
         </form>
     </Modal>

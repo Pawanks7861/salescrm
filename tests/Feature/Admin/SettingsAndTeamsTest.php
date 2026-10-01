@@ -30,6 +30,28 @@ test('admin can update settings; each change is audited with old and new values'
     expect(AuditLog::where('action', 'SETTING_CHANGED')->count())->toBe(2);
 });
 
+test('an admin alert reaches every active user and skips inactive ones', function () {
+    $admin = User::factory()->admin()->create();
+    $other = User::factory()->salesExecutive()->create();
+    $inactive = User::factory()->salesExecutive()->inactive()->create();
+
+    $this->actingAs($admin)->post('/admin/settings/alert-everyone')
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($admin->fresh()->notifications)->toHaveCount(1)
+        ->and($admin->notifications->first()->data['event'])->toBe('admin_alert')
+        ->and($other->fresh()->notifications)->toHaveCount(1)
+        ->and($inactive->fresh()->notifications)->toHaveCount(0)
+        ->and(AuditLog::where('action', 'NOTIFICATION_BROADCAST')->count())->toBe(1);
+});
+
+test('a salesperson cannot alert every user', function () {
+    $this->actingAs(User::factory()->salesExecutive()->create())
+        ->post('/admin/settings/alert-everyone')
+        ->assertForbidden();
+});
+
 test('settings are validated against their definitions', function () {
     $admin = User::factory()->admin()->create();
 

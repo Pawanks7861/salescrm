@@ -143,6 +143,7 @@ enum AuditAction: string
     case BrandingFaviconRemoved = 'BRANDING_FAVICON_REMOVED';
     case CompanyNameChanged = 'COMPANY_NAME_CHANGED';
 
+    case NotificationBroadcast = 'NOTIFICATION_BROADCAST';
     case BrowserNotificationsEnabled = 'BROWSER_NOTIFICATIONS_ENABLED';
     case BrowserNotificationsDisabled = 'BROWSER_NOTIFICATIONS_DISABLED';
     case NotificationSoundEnabled = 'NOTIFICATION_SOUND_ENABLED';

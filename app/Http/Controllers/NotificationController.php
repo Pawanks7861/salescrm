@@ -118,7 +118,7 @@ class NotificationController extends Controller
                 (bool) $meetingId => [! $visibleMeetings->has($meetingId), route('meetings.show', $meetingId, false)],
                 (bool) $callId => [! $visibleCalls->has($callId), route('calls.show', $callId, false)],
                 (bool) $leadId => [! $visibleLeads->has($leadId), route('leads.show', $leadId, false)],
-                default => [false, null],
+                default => [false, self::safePath($data['url'] ?? null)],
             };
 
             return [
@@ -132,5 +132,13 @@ class NotificationController extends Controller
                 'created_at' => $n->created_at?->toIso8601String(),
             ];
         })->values()->all();
+    }
+
+    /** Same-origin path only. Anything else opens the notification list. */
+    private static function safePath(mixed $url): string
+    {
+        return is_string($url) && str_starts_with($url, '/') && ! str_starts_with($url, '//')
+            ? $url
+            : route('notifications.index', [], false);
     }
 }

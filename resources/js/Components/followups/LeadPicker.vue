@@ -26,7 +26,12 @@ watch(term, (value) => {
         try {
             const { data } = await axios.get(route('search.leads'), { params: { q: value.trim() } });
             if (current === seq) {
-                results.value = data.results;
+                results.value = data.results ?? [];
+                const exact = results.value.filter((lead) => lead.full_name?.toLowerCase() === value.trim().toLowerCase());
+                if (exact.length === 1) {
+                    pick(exact[0]);
+                    return;
+                }
                 open.value = true;
             }
         } catch {
@@ -44,6 +49,10 @@ const pick = (lead) => {
     term.value = '';
     open.value = false;
 };
+
+const chooseFirst = () => {
+    if (results.value[0]) pick(results.value[0]);
+};
 </script>
 
 <template>
@@ -57,7 +66,7 @@ const pick = (lead) => {
         </button>
     </div>
     <div v-else class="relative">
-        <input v-model="term" type="search" class="form-input" placeholder="Search lead by name, number or phone…" autocomplete="off" @focus="open = results.length > 0" @blur="close" />
+        <input v-model="term" type="search" class="form-input" placeholder="Search lead by name, number or phone…" autocomplete="off" @focus="open = results.length > 0" @blur="close" @keydown.enter.prevent="chooseFirst" />
         <div v-if="open && term.trim().length >= 2" class="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
             <p v-if="loading && !results.length" class="px-3 py-2 text-xs text-slate-500">Searching…</p>
             <p v-else-if="!results.length" class="px-3 py-2 text-xs text-slate-500">No matching leads.</p>
