@@ -12,7 +12,7 @@ use App\Support\Permissions as P;
 /**
  * Every record ability requires MeetingVisibility (which itself requires the
  * linked lead to be visible). Changing a meeting additionally requires
- * canManage (host, the host's manager, or view_all). Completed, cancelled,
+ * canManage (host, the person who scheduled it, or view_all). Completed, cancelled,
  * no-show and rescheduled meetings are history and read-only. Ability names
  * contain no dot, so Gate::before never short-circuits them.
  */

@@ -43,6 +43,7 @@ class MeetingQueryService
         $query
             ->when(($filters['scope'] ?? null) === 'mine', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('meetings.host_user_id', $user->id)
+                ->orWhere('meetings.created_by', $user->id)
                 ->orWhereHas('participants', fn (Builder $p) => $p->where('user_id', $user->id))))
             ->when($filters['host'] ?? null, fn (Builder $q, $v) => $q->where('meetings.host_user_id', (int) $v))
             ->when($filters['type'] ?? null, fn (Builder $q, $v) => $q->where('meeting_type_id', (int) $v))
@@ -106,6 +107,7 @@ class MeetingQueryService
             ->where('end_at', '>', $from)
             ->when(($filters['scope'] ?? null) === 'mine', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('meetings.host_user_id', $user->id)
+                ->orWhere('meetings.created_by', $user->id)
                 ->orWhereHas('participants', fn (Builder $p) => $p->where('user_id', $user->id))))
             ->when($filters['host'] ?? null, fn (Builder $q, $v) => $q->where('meetings.host_user_id', (int) $v))
             ->when($filters['type'] ?? null, fn (Builder $q, $v) => $q->where('meeting_type_id', (int) $v))

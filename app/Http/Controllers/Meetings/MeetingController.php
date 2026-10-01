@@ -20,6 +20,7 @@ use App\Services\Meetings\MeetingQueryService;
 use App\Services\Meetings\MeetingService;
 use App\Services\Meetings\MeetingVisibility;
 use App\Support\Permissions;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -116,12 +117,7 @@ class MeetingController extends Controller
                 'lostReasons' => $canChangeStatus ? $leadOptions->lostReasons() : [],
                 'followup' => $canFollowup ? $followupOptions->form($user) : null,
             ],
-            'notes' => $meeting->adminNotes()->with('author:id,name')->get()->map(fn ($note) => [
-                'id' => $note->id,
-                'body' => $note->body,
-                'author' => $note->author?->name ?? 'Admin',
-                'created_at' => $note->created_at?->toIso8601String(),
-            ])->values(),
+            'notes' => $this->notes($meeting),
             'can' => [
                 'changeLeadStatus' => (bool) $canChangeStatus,
                 'scheduleFollowup' => (bool) $canFollowup,
@@ -145,7 +141,9 @@ class MeetingController extends Controller
 
         $meeting = $this->meetings->create($lead, $request->payload(), $user, $request->boolean('override_conflict'));
 
-        return back()->with('success', "Meeting {$meeting->meeting_number} scheduled.");
+        return redirect()
+            ->route('meetings.show', $meeting)
+            ->with('success', "Meeting {$meeting->meeting_number} scheduled.");
     }
 
     public function update(MeetingRequest $request, Meeting $meeting): RedirectResponse
@@ -173,6 +171,28 @@ class MeetingController extends Controller
         $this->meetings->restore($meeting, $request->user());
 
         return redirect()->route('meetings.show', $meeting)->with('success', 'Meeting restored.');
+    }
+
+    /**
+     * Admin notes on the meeting page. A missing notes table must not take
+     * down view or edit — the meeting itself still opens.
+     *
+     * @return list<array{id: int, body: string, author: string, created_at: string|null}>
+     */
+    private function notes(Meeting $meeting): array
+    {
+        try {
+            return $meeting->adminNotes()->with('author:id,name')->get()->map(fn ($note) => [
+                'id' => $note->id,
+                'body' => $note->body,
+                'author' => $note->author?->name ?? 'Admin',
+                'created_at' => $note->created_at?->toIso8601String(),
+            ])->values()->all();
+        } catch (QueryException $e) {
+            report($e);
+
+            return [];
+        }
     }
 
     /** The reschedule chain around this meeting (oldest first), limited to entries the viewer may see. */

@@ -36,6 +36,7 @@ onMounted(() => {
     const requested = new URLSearchParams(window.location.search).get('action');
     if (requested === 'complete' && m.value.can.complete) modal.value = 'complete';
     if (requested === 'no_show' && m.value.can.no_show) modal.value = 'no_show';
+    if (requested === 'edit' && m.value.can?.update) modal.value = 'edit';
 });
 
 const post = (name) => router.post(route(name, m.value.id), {}, { preserveScroll: true });
@@ -65,7 +66,7 @@ const openParticipant = () => {
     picked.value = [];
     modal.value = 'participant';
 };
-const leadIsParticipant = computed(() => m.value.participants.some((p) => p.type === 'lead'));
+const leadIsParticipant = computed(() => (m.value.participants ?? []).some((p) => p.type === 'lead'));
 const addParticipant = () => pForm.post(route('meetings.participants.store', m.value.id), { preserveScroll: true, onSuccess: () => (modal.value = null) });
 const existingUserIds = computed(() => [m.value.host_user_id, ...m.value.participants.filter((p) => p.user_id).map((p) => p.user_id)]);
 
@@ -79,7 +80,7 @@ const details = computed(() => [
     ['Duration', durationLabel(m.value.duration_minutes)],
     ['Timezone', m.value.timezone],
     ['Host', m.value.host?.name ?? '—'],
-    ['Reminders', m.value.reminder_labels.length ? m.value.reminder_labels.join(', ') : 'None'],
+    ['Reminders', (m.value.reminder_labels ?? []).length ? m.value.reminder_labels.join(', ') : 'None'],
     ['Created by', m.value.creator ? `${m.value.creator.name} · ${formatDateTime(m.value.created_at)}` : formatDateTime(m.value.created_at)],
 ]);
 </script>

@@ -4,6 +4,7 @@ use App\Enums\AuditAction;
 use App\Enums\MeetingStatus;
 use App\Models\AuditLog;
 use App\Models\Lead;
+use App\Models\Meeting;
 use App\Models\Permission;
 use App\Services\PermissionRegistrar;
 use App\Support\Permissions;
@@ -62,4 +63,35 @@ test('forbidden meeting access is audited', function () {
     $this->actingAs($this->org->rahul)->get("/meetings/{$priyaMeeting->id}")->assertForbidden();
 
     expect(AuditLog::where('action', AuditAction::MeetingAccessDenied->value)->where('user_id', $this->org->rahul->id)->exists())->toBeTrue();
+});
+
+test('the scheduler can view and edit a meeting hosted by someone else', function () {
+    $this->org->admin->permissionOverrides()->attach(
+        Permission::where('name', Permissions::MEETING_VIEW_ALL)->value('id'),
+        ['type' => 'deny'],
+    );
+    app(PermissionRegistrar::class)->flushUser($this->org->admin);
+    $this->org->admin->forgetResolvedPermissions();
+
+    $this->actingAs($this->org->admin)
+        ->post('/meetings', meetingPayload($this->lead, [
+            'scheduled_date' => '2026-09-25',
+            'host_user_id' => $this->org->rahul->id,
+            'title' => 'Scheduled for the owner',
+        ]))
+        ->assertSessionHasNoErrors();
+
+    $meeting = Meeting::query()->where('title', 'Scheduled for the owner')->first();
+    expect($meeting)->not->toBeNull()
+        ->and($meeting->host_user_id)->toBe($this->org->rahul->id)
+        ->and($meeting->created_by)->toBe($this->org->admin->id);
+
+    $this->actingAs($this->org->admin)->get("/meetings/{$meeting->id}")->assertOk();
+    $this->actingAs($this->org->admin)
+        ->put("/meetings/{$meeting->id}", ['title' => 'Updated by the scheduler'])
+        ->assertSessionHasNoErrors();
+
+    expect($meeting->fresh()->title)->toBe('Updated by the scheduler');
+    expect(collect($this->actingAs($this->org->admin)->get('/meetings?tab=all')->inertiaProps('meetings.data'))->pluck('id'))
+        ->toContain($meeting->id);
 });

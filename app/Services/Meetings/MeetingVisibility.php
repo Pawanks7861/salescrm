@@ -17,8 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
  * A meeting is visible only when BOTH hold:
  *   1. its own tier allows it
  *        meeting.view_all → any meeting
- *        meeting.view     → hosted by them, they are an internal participant,
- *                           or linked to a lead they own
+ *        meeting.view     → hosted by them, created by them, they are an
+ *                           internal participant, or linked to a lead they own
  *   2. when linked to a lead, that lead is visible through LeadVisibility (and
  *      not archived). Lead visibility is authoritative: being added to a
  *      meeting never grants access to someone else's lead.
@@ -54,6 +54,7 @@ class MeetingVisibility
             self::ALL => null,
             self::OWN => $query->where(fn (Builder $q) => $q
                 ->where("{$table}.host_user_id", $user->id)
+                ->orWhere("{$table}.created_by", $user->id)
                 ->orWhereHas('participants', fn (Builder $p) => $p
                     ->where('participant_type', MeetingParticipantType::User->value)
                     ->where('user_id', $user->id))
@@ -71,6 +72,7 @@ class MeetingVisibility
         $allowed = match ($this->tier($user)) {
             self::ALL => true,
             self::OWN => (int) $meeting->host_user_id === $user->id
+                || (int) $meeting->created_by === $user->id
                 || $this->participates($user, $meeting)
                 || ($meeting->lead_id !== null && $this->leads->owns($user, $meeting->lead)),
             default => false,
@@ -81,14 +83,15 @@ class MeetingVisibility
 
     /**
      * Whether the user may change the meeting (edit, reschedule, cancel,
-     * complete…). Hosts manage their own meetings; view_all users manage any.
-     * Participants who are not the host can view and RSVP only.
+     * complete…). The host and the person who scheduled it may manage it;
+     * view_all users manage any. Other participants can view and RSVP only.
      */
     public function canManage(User $user, Meeting $meeting): bool
     {
         $allowed = match ($this->tier($user)) {
             self::ALL => true,
-            self::OWN => (int) $meeting->host_user_id === $user->id,
+            self::OWN => (int) $meeting->host_user_id === $user->id
+                || (int) $meeting->created_by === $user->id,
             default => false,
         };
 

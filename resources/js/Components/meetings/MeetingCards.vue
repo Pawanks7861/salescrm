@@ -46,7 +46,8 @@ const edgeClass = (m) => {
                 <button v-if="m.can?.cancel" type="button" class="icon-btn h-8 w-8 border border-slate-200" title="Cancel" @click="emit('action', { type: 'cancel', meeting: m })">
                     <AppIcon name="ban" class="h-4 w-4" />
                 </button>
-                <Link :href="route('meetings.show', m.id)" class="icon-btn h-8 w-8 border border-slate-200" title="Open"><AppIcon name="eye" class="h-4 w-4" /></Link>
+                <Link v-if="m.can?.update" :href="`${route('meetings.show', m.id)}?action=edit`" class="icon-btn h-8 w-8 border border-slate-200" title="Edit"><AppIcon name="edit" class="h-4 w-4" /></Link>
+                <Link :href="route('meetings.show', m.id)" class="icon-btn h-8 w-8 border border-slate-200" title="View"><AppIcon name="eye" class="h-4 w-4" /></Link>
             </div>
         </li>
     </ul>

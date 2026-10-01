@@ -163,7 +163,7 @@ const creating = ref(canCreate.value && new URLSearchParams(window.location.sear
                                 <div class="inline-flex items-center gap-1">
                                     <button v-if="m.can.complete" type="button" class="btn-complete" @click="action = { type: 'complete', meeting: m }">Complete</button>
                                     <button v-if="m.can.reschedule" type="button" class="icon-btn" title="Reschedule" @click="action = { type: 'reschedule', meeting: m }"><AppIcon name="clock" class="h-4 w-4" /></button>
-                                    <Link v-if="m.can.update" :href="route('meetings.show', m.id)" class="icon-btn" title="Edit"><AppIcon name="edit" class="h-4 w-4" /></Link>
+                                    <Link v-if="m.can.update" :href="`${route('meetings.show', m.id)}?action=edit`" class="icon-btn" title="Edit"><AppIcon name="edit" class="h-4 w-4" /></Link>
                                     <button v-if="m.can.cancel" type="button" class="icon-btn" title="Cancel" @click="action = { type: 'cancel', meeting: m }"><AppIcon name="ban" class="h-4 w-4" /></button>
                                     <Link :href="route('meetings.show', m.id)" class="icon-btn" title="View"><AppIcon name="eye" class="h-4 w-4" /></Link>
                                 </div>

@@ -127,6 +127,10 @@ class Meeting extends Model
 
     public function durationMinutes(): int
     {
+        if (! $this->start_at || ! $this->end_at) {
+            return 0;
+        }
+
         return (int) round($this->start_at->diffInMinutes($this->end_at));
     }
 
