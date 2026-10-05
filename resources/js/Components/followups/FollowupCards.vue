@@ -36,6 +36,7 @@ const edgeClass = (state) =>
                     <PriorityBadge v-if="f.priority !== 'medium'" :priority="f.priority" />
                 </div>
                 <Link :href="route('followups.show', f.id)" class="mt-1 block truncate text-sm font-medium text-slate-900 hover:text-brand-700">{{ f.title }}</Link>
+                <p v-if="f.description" class="mt-0.5 line-clamp-2 text-xs text-slate-600">{{ f.description }}</p>
                 <p class="truncate text-2xs text-slate-500">
                     <template v-if="showLead && f.lead">
                         <Link :href="route('leads.show', f.lead.id)" class="font-medium text-slate-700 hover:text-brand-700">{{ f.lead.full_name }}</Link>

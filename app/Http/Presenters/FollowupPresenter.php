@@ -7,10 +7,12 @@ use App\Models\Followup;
 use App\Models\User;
 use App\Services\SettingService;
 use App\Support\FollowupReminderOptions;
+use Illuminate\Support\Str;
 
 /**
  * Shapes follow-up data for Inertia. List rows carry only what sales work
- * needs — never completion notes, lead notes or custom fields.
+ * needs — never completion notes, lead notes or custom fields. Description
+ * is shortened so cards can preview it without opening the record.
  */
 class FollowupPresenter
 {
@@ -27,9 +29,12 @@ class FollowupPresenter
 
     public function row(Followup $followup, User $viewer): array
     {
+        $description = trim((string) ($followup->description ?? ''));
+
         return [
             'id' => $followup->id,
             'title' => $followup->displayTitle(),
+            'description' => $description !== '' ? Str::limit($description, 160) : null,
             'type' => $followup->type?->only('id', 'name', 'color', 'icon'),
             'scheduled_at' => $followup->scheduled_at?->toIso8601String(),
             'status' => $followup->status?->value ?? 'pending',
@@ -52,7 +57,9 @@ class FollowupPresenter
     /** Full record for the follow-up page (viewer already authorised). */
     public function detail(Followup $followup, User $viewer): array
     {
-        return array_merge($this->row($followup, $viewer), [
+        $row = $this->row($followup, $viewer);
+
+        return array_merge($row, [
             'raw_title' => $followup->title,
             'description' => $followup->description,
             'type_id' => $followup->followup_type_id,

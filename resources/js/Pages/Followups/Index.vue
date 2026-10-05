@@ -133,8 +133,9 @@ const tabCount = { red: 'bg-red-100 text-red-600', amber: 'bg-amber-100 text-amb
                             <td>
                                 <UiBadge v-if="f.type" :color="f.type.color"><AppIcon v-if="f.type.icon" :name="f.type.icon" class="h-3 w-3" />{{ f.type.name }}</UiBadge>
                             </td>
-                            <td class="max-w-[220px]">
+                            <td class="max-w-[260px]">
                                 <Link :href="route('followups.show', f.id)" class="block truncate text-sm text-slate-800 hover:text-brand-700">{{ f.title }}</Link>
+                                <p v-if="f.description" class="mt-0.5 line-clamp-2 text-2xs text-slate-500">{{ f.description }}</p>
                                 <p v-if="f.outcome" class="text-2xs text-slate-500">Outcome: {{ f.outcome }}</p>
                             </td>
                             <td class="text-xs">
