@@ -15,6 +15,7 @@ use App\Services\Followups\FollowupMetrics;
 use App\Services\Followups\FollowupOptions;
 use App\Services\Followups\FollowupQueryService;
 use App\Services\Followups\FollowupVisibility;
+use App\Services\Leads\LeadFollowupRequiredQuery;
 use App\Services\Leads\LeadOptions;
 use App\Services\Meetings\MeetingMetrics;
 use App\Services\Meetings\MeetingVisibility;
@@ -41,6 +42,7 @@ class DashboardController extends Controller
         private readonly FollowupMetrics $followupMetrics,
         private readonly FollowupOptions $followupOptions,
         private readonly LeadOptions $leadOptions,
+        private readonly LeadFollowupRequiredQuery $followupRequiredLeads,
         private readonly MeetingVisibility $meetingVisibility,
         private readonly MeetingMetrics $meetingMetrics,
         private readonly MeetingPresenter $meetingPresenter,
@@ -76,6 +78,7 @@ class DashboardController extends Controller
             'meetings' => $this->safely(fn () => $this->meetings($user), null),
             'facebook' => $this->safely(fn () => $this->facebook($user), null),
             'reportKpis' => $this->safely(fn () => app(ReportService::class)->dashboard($user), null),
+            'followupRequired' => $this->safely(fn () => $this->followupRequired($user), null),
             'lastLogin' => $this->safely(fn () => LoginHistory::where('user_id', $user->id)
                 ->where('event', 'login')
                 ->latest('id')
@@ -179,6 +182,27 @@ class DashboardController extends Controller
                 'lostReasons' => $this->leadOptions->lostReasons(),
                 'canChangeLeadStatus' => $user->hasPermission(Permissions::LEAD_CHANGE_STATUS),
             ],
+        ];
+    }
+
+    /**
+     * Distinct leads that need a follow-up. Null without lead visibility.
+     * Uses the same query as the follow-up-required page.
+     *
+     * @return array{total: int, none: int, missing: int}|null
+     */
+    private function followupRequired(User $user): ?array
+    {
+        if (! $user->can('viewAny', Lead::class)) {
+            return null;
+        }
+
+        $counts = $this->followupRequiredLeads->counts($user);
+
+        return [
+            'total' => $counts['all'],
+            'none' => $counts['none'],
+            'missing' => $counts['missing'],
         ];
     }
 

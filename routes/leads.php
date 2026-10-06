@@ -4,6 +4,7 @@ use App\Http\Controllers\Leads\LeadAssignmentController;
 use App\Http\Controllers\Leads\LeadAttachmentController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\Leads\LeadDuplicateController;
+use App\Http\Controllers\Leads\LeadFollowupRequiredController;
 use App\Http\Controllers\Leads\LeadNoteController;
 use App\Http\Controllers\Leads\LeadPipelineController;
 use App\Http\Controllers\Leads\LeadSearchController;
@@ -20,6 +21,7 @@ $anyLeadView = 'permission:lead.view|lead.view_all';
 
 Route::middleware($anyLeadView)->group(function () {
     Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::get('leads/follow-up-required', LeadFollowupRequiredController::class)->name('leads.follow-up-required');
     Route::put('leads/columns', [LeadController::class, 'updateColumns'])->name('leads.columns');
     Route::get('leads/pipeline', [LeadPipelineController::class, 'index'])->name('leads.pipeline');
     Route::get('leads/pipeline/{status}/more', [LeadPipelineController::class, 'more'])->middleware('throttle:search')->name('leads.pipeline.more');

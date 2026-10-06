@@ -25,6 +25,7 @@ const props = defineProps({
     meetings: { type: Object, default: null },
     facebook: { type: Object, default: null },
     reportKpis: { type: Object, default: null },
+    followupRequired: { type: Object, default: null },
 });
 
 const action = ref(null);
@@ -36,7 +37,7 @@ const salesCards = computed(() => {
     const s = props.sales;
     if (!s) return [];
     const scope = s.scope;
-    return [
+    const cards = [
         s.leads !== null && { key: 'leads', label: scope === 'Company' ? 'All leads' : 'My leads', value: s.leads, icon: 'users', tone: 'brand', href: route('leads.index') },
         s.unassigned !== null && s.unassigned !== undefined && { key: 'unassigned', label: 'Unassigned leads', value: s.unassigned, icon: 'user', tone: 'amber', href: route('leads.index', { assignee: 'unassigned' }) },
         { key: 'today', label: 'Follow-ups today', value: s.counts.today, icon: 'calendar', tone: 'blue', href: route('followups.index', { tab: 'today' }) },
@@ -44,6 +45,21 @@ const salesCards = computed(() => {
         { key: 'upcoming', label: 'Upcoming follow-ups', value: s.counts.upcoming, icon: 'clock', tone: 'amber', href: route('followups.index', { tab: 'upcoming' }) },
         { key: 'completed', label: 'Completed today', value: s.counts.completed_today, icon: 'check', tone: 'green', href: route('followups.index', { tab: 'completed' }) },
     ].filter(Boolean);
+    if (props.followupRequired) {
+        cards.push(followupRequiredCard(props.followupRequired));
+    }
+    return cards;
+});
+
+const followupRequiredCard = (counts) => ({
+    key: 'followup-required',
+    label: 'Follow-up Required',
+    value: counts.total,
+    icon: 'clock',
+    tone: 'purple',
+    href: route('leads.follow-up-required'),
+    hint: 'Leads need attention',
+    detail: `${counts.none} no follow-up • ${counts.missing} next follow-up missing`,
 });
 
 const user = computed(() => usePage().props.auth?.user ?? null);
@@ -83,7 +99,14 @@ const greeting = computed(() => {
         </div>
 
         <div v-if="sales" class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2" :class="salesCards.length > 4 ? 'lg:grid-cols-3 xl:grid-cols-5' : 'xl:grid-cols-4'">
-            <StatCard v-for="card in salesCards" :key="card.key" :label="card.label" :value="card.value" :icon="card.icon" :tone="card.tone" :href="card.href" />
+            <StatCard v-for="card in salesCards" :key="card.key" :label="card.label" :value="card.value" :icon="card.icon" :tone="card.tone" :href="card.href" :hint="card.hint">
+                <template v-if="card.detail">{{ card.detail }}</template>
+            </StatCard>
+        </div>
+        <div v-else-if="followupRequired" class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Follow-up Required" :value="followupRequired.total" icon="clock" tone="purple" :href="route('leads.follow-up-required')" hint="Leads need attention">
+                {{ followupRequired.none }} no follow-up • {{ followupRequired.missing }} next follow-up missing
+            </StatCard>
         </div>
 
         <section v-if="reportKpis" class="mb-6" aria-label="Sales performance this month">
