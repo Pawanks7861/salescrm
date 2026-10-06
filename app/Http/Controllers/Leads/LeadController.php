@@ -106,6 +106,10 @@ class LeadController extends Controller
             unset($filters['batch']);
         }
 
+        // Default list is newest-first by created date so the UI can group rows by day.
+        $filters['sort'] ??= 'created_at';
+        $filters['direction'] ??= 'desc';
+
         $leads = $this->queries->filtered($user, $filters)
             ->with([...LeadPresenter::ROW_WITH, ...($viewBatches ? ['batches' => fn ($q) => $q->select('batches.id', 'batches.name')->orderBy('batches.name')] : [])])
             ->paginate($filters['per_page'] ?? 25)

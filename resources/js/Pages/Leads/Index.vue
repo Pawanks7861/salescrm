@@ -13,7 +13,7 @@ import UiPagination from '@/Components/ui/UiPagination.vue';
 import { useFilters } from '@/Composables/useFilters';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { batchTags } from '@/utils/batches';
-import { formatCurrency, formatDate, formatDateTime, timeAgo } from '@/utils/format';
+import { crmParts, formatCurrency, formatDate, formatDateTime, formatDayHeading, timeAgo } from '@/utils/format';
 import { Link } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
@@ -41,7 +41,8 @@ const sortBy = (column) => {
         filters.direction = column === 'full_name' || column === 'lead_number' ? 'asc' : 'desc';
     }
 };
-const sortIcon = (column) => (filters.sort === column || (!filters.sort && column === 'created_at') ? ((filters.direction || 'desc') === 'asc' ? '↑' : '↓') : '');
+const sortIcon = (column) => ((filters.sort || 'created_at') === column ? ((filters.direction || 'desc') === 'asc' ? '↑' : '↓') : '');
+const sortedByCreated = computed(() => !filters.sort || filters.sort === 'created_at');
 
 const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-slate-600' : days <= 7 ? 'text-amber-600' : 'text-red-600');
 const pickDay = (day) => {
@@ -60,22 +61,25 @@ const toggleAll = () => (selected.value = allSelected.value ? [] : [...selectabl
 const addingToBatch = ref(false);
 const groupedRows = computed(() => {
     const rows = props.leads.data;
-    const byDate = !filters.sort || filters.sort === 'created_at';
     const leadRow = (lead) => ({ type: 'lead', lead, batches: batchTags(lead.batches) });
-    if (!byDate) return rows.map(leadRow);
+    if (!sortedByCreated.value) return rows.map(leadRow);
 
     const out = [];
     let last = '';
     for (const lead of rows) {
-        const label = formatDate(lead.created_at);
-        if (label !== last) {
-            out.push({ type: 'date', label });
-            last = label;
+        const key = crmParts(lead.created_at).date;
+        if (key && key !== last) {
+            out.push({ type: 'date', key, label: formatDayHeading(lead.created_at) });
+            last = key;
         }
         out.push(leadRow(lead));
     }
     return out;
 });
+const clearDateSort = () => {
+    filters.sort = 'created_at';
+    filters.direction = 'desc';
+};
 </script>
 
 <template>
@@ -186,9 +190,15 @@ const groupedRows = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <template v-for="row in groupedRows" :key="row.type === 'date' ? `d-${row.label}` : row.lead.id">
-                        <tr v-if="row.type === 'date'" class="bg-slate-50">
-                            <td :colspan="colSpan" class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ row.label }}</td>
+                        <tr v-if="!sortedByCreated && leads.data.length" class="bg-amber-50/80">
+                            <td :colspan="colSpan" class="text-2xs text-amber-800">
+                                Date grouping is off while sorted by another column.
+                                <button type="button" class="ml-1 font-semibold underline hover:text-amber-950" @click="clearDateSort">Group by date</button>
+                            </td>
+                        </tr>
+                        <template v-for="row in groupedRows" :key="row.type === 'date' ? `d-${row.key}` : row.lead.id">
+                        <tr v-if="row.type === 'date'" class="sticky top-0 z-[1] bg-slate-100/95 backdrop-blur">
+                            <td :colspan="colSpan" class="py-2.5 text-sm font-semibold tracking-tight text-slate-800">{{ row.label }}</td>
                         </tr>
                         <tr v-else :class="{ 'opacity-60': row.lead.archived }">
                             <td v-if="can.addToBatch">

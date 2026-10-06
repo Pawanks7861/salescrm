@@ -11,7 +11,7 @@ import { useConfirm } from '@/Composables/useConfirm';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { formatDate } from '@/utils/format';
 import { Link, router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     type: String,
@@ -71,12 +71,31 @@ const destroy = async (item) => {
     }
 };
 
+const ordered = ref([]);
+watch(
+    () => props.items,
+    (items) => (ordered.value = [...items]),
+    { immediate: true },
+);
+
 const move = (index, delta) => {
-    const ids = props.items.map((i) => i.id);
     const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    router.post(route('admin.lead-settings.reorder', props.type), { ids }, { preserveScroll: true });
+    if (target < 0 || target >= ordered.value.length) return;
+    const next = [...ordered.value];
+    [next[index], next[target]] = [next[target], next[index]];
+    const previous = ordered.value;
+    ordered.value = next;
+    router.post(
+        route('admin.lead-settings.reorder', props.type),
+        { ids: next.map((i) => i.id) },
+        {
+            preserveScroll: true,
+            only: ['items'],
+            onError: () => {
+                ordered.value = previous;
+            },
+        },
+    );
 };
 </script>
 
@@ -119,11 +138,11 @@ const move = (index, delta) => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <tr v-for="(item, i) in items" :key="item.id">
+                        <tr v-for="(item, i) in ordered" :key="item.id">
                             <td v-if="sortable">
                                 <div class="flex gap-0.5">
-                                    <button class="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30" :disabled="i === 0" title="Move up" @click="move(i, -1)"><AppIcon name="chevron-up" class="h-3.5 w-3.5" /></button>
-                                    <button class="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30" :disabled="i === items.length - 1" title="Move down" @click="move(i, 1)"><AppIcon name="chevron" class="h-3.5 w-3.5" /></button>
+                                    <button type="button" class="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30" :disabled="i === 0" title="Move up" @click="move(i, -1)"><AppIcon name="chevron-up" class="h-3.5 w-3.5" /></button>
+                                    <button type="button" class="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30" :disabled="i === ordered.length - 1" title="Move down" @click="move(i, 1)"><AppIcon name="chevron" class="h-3.5 w-3.5" /></button>
                                 </div>
                             </td>
                             <td>

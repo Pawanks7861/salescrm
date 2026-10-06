@@ -34,12 +34,34 @@ watch(() => props.columns, sync);
 const toast = useToast();
 const dragging = ref(null);
 const overColumn = ref(null);
-const lostModal = ref({ show: false, status: null, leadId: null });
+const lostModal = ref({ show: false, status: null, leadId: null, fromStatusId: null });
 
 const onDragStart = (card, fromStatusId, e) => {
-    if (!props.can.changeStatus) return;
-    dragging.value = { card, fromStatusId };
+    if (!props.can.changeStatus) {
+        e.preventDefault();
+        return;
+    }
+    // Firefox / some WebViews ignore drop unless dataTransfer has a payload.
+    e.dataTransfer.setData('text/plain', String(card.id));
     e.dataTransfer.effectAllowed = 'move';
+    dragging.value = { card, fromStatusId };
+};
+
+const onDragEnd = () => {
+    dragging.value = null;
+    overColumn.value = null;
+};
+
+const moveCard = (card, fromStatusId, toColumn) => {
+    const from = board.value.find((c) => c.status.id === fromStatusId);
+    const to = board.value.find((c) => c.status.id === toColumn.status.id);
+    if (!from || !to) return;
+
+    from.cards = from.cards.filter((c) => c.id !== card.id);
+    from.count = Math.max(0, from.count - 1);
+    to.cards = to.cards.filter((c) => c.id !== card.id);
+    to.cards.unshift({ ...card, status_id: to.status.id });
+    to.count++;
 };
 
 const onDrop = (column) => {
@@ -49,15 +71,11 @@ const onDrop = (column) => {
     if (!drag || drag.fromStatusId === column.status.id) return;
 
     if (column.status.is_lost) {
-        lostModal.value = { show: true, status: column.status, leadId: drag.card.id };
+        lostModal.value = { show: true, status: column.status, leadId: drag.card.id, fromStatusId: drag.fromStatusId };
         return;
     }
 
-    const from = board.value.find((c) => c.status.id === drag.fromStatusId);
-    from.cards = from.cards.filter((c) => c.id !== drag.card.id);
-    from.count--;
-    column.cards.unshift({ ...drag.card, status_id: column.status.id });
-    column.count++;
+    moveCard(drag.card, drag.fromStatusId, column);
 
     router.post(
         route('leads.status', drag.card.id),
@@ -65,12 +83,18 @@ const onDrop = (column) => {
         {
             preserveScroll: true,
             preserveState: true,
+            onSuccess: () => sync(),
             onError: () => {
                 toast.error('Could not move the lead.');
                 sync();
             },
         },
     );
+};
+
+const onLostSaved = () => {
+    lostModal.value = { show: false, status: null, leadId: null, fromStatusId: null };
+    router.reload({ only: ['columns'], preserveScroll: true });
 };
 
 const loadMore = async (column) => {
@@ -125,7 +149,7 @@ const columnTotal = (column) => column.cards.reduce((sum, c) => sum + Number(c.e
                 :key="column.status.id"
                 class="flex max-h-[calc(100vh-250px)] min-h-[240px] w-[280px] shrink-0 flex-col rounded-xl border bg-surface-1/60 transition"
                 :class="overColumn === column.status.id ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200' : 'border-slate-200/70'"
-                @dragover.prevent="overColumn = column.status.id"
+                @dragover.prevent="can.changeStatus && (overColumn = column.status.id)"
                 @dragleave="overColumn = overColumn === column.status.id ? null : overColumn"
                 @drop.prevent="onDrop(column)"
             >
@@ -144,10 +168,10 @@ const columnTotal = (column) => column.cards.reduce((sum, c) => sum + Number(c.e
                         class="rounded-xl border border-slate-200/80 bg-slate-50 p-3.5 transition hover:border-slate-300"
                         :class="[can.changeStatus ? 'cursor-grab active:cursor-grabbing' : '', dragging?.card.id === card.id ? 'opacity-40' : '']"
                         @dragstart="onDragStart(card, column.status.id, $event)"
-                        @dragend="dragging = null"
+                        @dragend="onDragEnd"
                     >
                         <div class="flex items-start justify-between gap-2">
-                            <Link :href="route('leads.show', card.id)" class="text-sm font-semibold leading-tight text-slate-900 hover:text-brand-700">{{ card.full_name }}</Link>
+                            <Link :href="route('leads.show', card.id)" class="text-sm font-semibold leading-tight text-slate-900 hover:text-brand-700" draggable="false" @dragstart.stop.prevent>{{ card.full_name }}</Link>
                             <PriorityBadge :priority="card.priority" />
                         </div>
                         <p v-if="card.company_name" class="mt-0.5 truncate text-2xs text-slate-500">{{ card.company_name }}</p>
@@ -170,6 +194,13 @@ const columnTotal = (column) => column.cards.reduce((sum, c) => sum + Number(c.e
             </div>
         </div>
 
-        <StatusChangeModal :show="lostModal.show" :lead-id="lostModal.leadId" :status="lostModal.status" :lost-reasons="options.lostReasons" @close="lostModal.show = false" />
+        <StatusChangeModal
+            :show="lostModal.show"
+            :lead-id="lostModal.leadId"
+            :status="lostModal.status"
+            :lost-reasons="options.lostReasons"
+            @close="lostModal.show = false"
+            @saved="onLostSaved"
+        />
     </AppLayout>
 </template>

@@ -10,9 +10,15 @@ import UiToggle from '@/Components/ui/UiToggle.vue';
 import { useConfirm } from '@/Composables/useConfirm';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({ fields: Array, types: Array });
+const ordered = ref([]);
+watch(
+    () => props.fields,
+    (fields) => (ordered.value = [...fields]),
+    { immediate: true },
+);
 
 const typeLabel = (value) => props.types.find((t) => t.value === value)?.label ?? value;
 
@@ -65,11 +71,23 @@ const destroy = async (field) => {
 };
 
 const move = (index, delta) => {
-    const ids = props.fields.map((f) => f.id);
     const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    router.post(route('admin.custom-fields.reorder'), { ids }, { preserveScroll: true });
+    if (target < 0 || target >= ordered.value.length) return;
+    const next = [...ordered.value];
+    [next[index], next[target]] = [next[target], next[index]];
+    const previous = ordered.value;
+    ordered.value = next;
+    router.post(
+        route('admin.custom-fields.reorder'),
+        { ids: next.map((f) => f.id) },
+        {
+            preserveScroll: true,
+            only: ['fields'],
+            onError: () => {
+                ordered.value = previous;
+            },
+        },
+    );
 };
 </script>
 
@@ -95,11 +113,11 @@ const move = (index, delta) => {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    <tr v-for="(field, i) in fields" :key="field.id">
+                    <tr v-for="(field, i) in ordered" :key="field.id">
                         <td>
                             <div class="flex gap-0.5">
-                                <button class="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-30" :disabled="i === 0" @click="move(i, -1)"><AppIcon name="chevron-up" class="h-3.5 w-3.5" /></button>
-                                <button class="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-30" :disabled="i === fields.length - 1" @click="move(i, 1)"><AppIcon name="chevron" class="h-3.5 w-3.5" /></button>
+                                <button type="button" class="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-30" :disabled="i === 0" title="Move up" @click="move(i, -1)"><AppIcon name="chevron-up" class="h-3.5 w-3.5" /></button>
+                                <button type="button" class="rounded p-0.5 text-slate-400 hover:bg-slate-100 disabled:opacity-30" :disabled="i === ordered.length - 1" title="Move down" @click="move(i, 1)"><AppIcon name="chevron" class="h-3.5 w-3.5" /></button>
                             </div>
                         </td>
                         <td>

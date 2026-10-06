@@ -30,6 +30,17 @@ export function formatDate(value) {
     }).format(new Date(value));
 }
 
+/** Group heading on the leads list: "6 Oct 2026" in the CRM timezone. */
+export function formatDayHeading(value) {
+    if (!value) return '—';
+    return new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: timezone(),
+    }).format(new Date(value));
+}
+
 /**
  * Calendar date ("YYYY-MM-DD", no time) in the same style as formatDate.
  * Formatted as-is: no timezone conversion, so 2026-10-01 is always 01 Oct 2026.
