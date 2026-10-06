@@ -20,6 +20,7 @@ $anyLeadView = 'permission:lead.view|lead.view_all';
 
 Route::middleware($anyLeadView)->group(function () {
     Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::put('leads/columns', [LeadController::class, 'updateColumns'])->name('leads.columns');
     Route::get('leads/pipeline', [LeadPipelineController::class, 'index'])->name('leads.pipeline');
     Route::get('leads/pipeline/{status}/more', [LeadPipelineController::class, 'more'])->middleware('throttle:search')->name('leads.pipeline.more');
     Route::get('search/leads', LeadSearchController::class)->middleware('throttle:search')->name('search.leads');
