@@ -16,6 +16,13 @@ return [
     ],
 
     /*
+    | Leads Requiring Follow-up includes only leads created on or after this
+    | CRM-local calendar date (00:00:00 in general.timezone). Older leads stay
+    | out of that screen and its dashboard count. This does not change leads.
+    */
+    'followup_required_from' => '2026-10-01',
+
+    /*
     | Emergency switch if the Medawk WiFi allow-list locks everyone out.
     | Set OFFICE_WIFI_BYPASS=true, then php artisan config:cache.
     */

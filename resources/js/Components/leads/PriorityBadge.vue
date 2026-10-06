@@ -3,7 +3,7 @@ import UiBadge from '@/Components/ui/UiBadge.vue';
 
 defineProps({ priority: { type: String, default: null } });
 
-const colors = { low: 'slate', medium: 'blue', high: 'amber', urgent: 'red' };
+const colors = { low: 'slate', medium: 'purple', high: 'amber', urgent: 'red' };
 </script>
 
 <template>
