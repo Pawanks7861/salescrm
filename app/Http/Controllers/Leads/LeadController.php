@@ -34,6 +34,7 @@ use App\Services\Meetings\MeetingOptions;
 use App\Services\Meetings\MeetingParticipantService;
 use App\Services\Meetings\MeetingQueryService;
 use App\Support\CrmTime;
+use App\Support\LeadListColumns;
 use App\Support\LeadValue;
 use App\Support\Permissions;
 use Carbon\CarbonImmutable;
@@ -72,6 +73,28 @@ class LeadController extends Controller
         private readonly MeetingParticipantService $meetingParticipants,
     ) {}
 
+    public function updateColumns(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Lead::class);
+
+        $user = $request->user();
+        $available = LeadListColumns::available($user->can('viewAny', Batch::class), LeadValue::enabled());
+
+        if ($request->boolean('reset')) {
+            $user->forceFill(['lead_list_columns' => null])->save();
+        } else {
+            $data = $request->validate([
+                'columns' => ['required', 'array', 'size:'.count($available)],
+                'columns.*' => ['string', 'distinct', Rule::in($available)],
+            ]);
+            $user->forceFill(['lead_list_columns' => array_values($data['columns'])])->save();
+        }
+
+        return response()->json([
+            'columns' => LeadListColumns::resolve($user->lead_list_columns, $user->can('viewAny', Batch::class), LeadValue::enabled()),
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Lead::class);
@@ -105,6 +128,7 @@ class LeadController extends Controller
         if (! $viewBatches) {
             unset($filters['batch']);
         }
+        $columns = LeadListColumns::resolve($user->lead_list_columns, $viewBatches, LeadValue::enabled());
 
         // Default list is newest-first by created date so the UI can group rows by day.
         $filters['sort'] ??= 'created_at';
@@ -122,6 +146,8 @@ class LeadController extends Controller
         return Inertia::render('Leads/Index', [
             'leads' => $leads,
             'filters' => $filters,
+            'columnOrder' => $columns,
+            'columnDefault' => LeadListColumns::available($viewBatches, LeadValue::enabled()),
             'options' => [
                 'statuses' => $this->options->statuses(false),
                 'sources' => $this->options->sources(),

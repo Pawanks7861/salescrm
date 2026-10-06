@@ -11,10 +11,13 @@ import UiBadge from '@/Components/ui/UiBadge.vue';
 import UiButton from '@/Components/ui/UiButton.vue';
 import UiPagination from '@/Components/ui/UiPagination.vue';
 import { useFilters } from '@/Composables/useFilters';
+import { useToast } from '@/Composables/useToast';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { batchTags } from '@/utils/batches';
 import { crmParts, formatCurrency, formatDate, formatDateTime, formatDayHeading, timeAgo } from '@/utils/format';
+import { reorderColumns } from '@/utils/leadColumns';
 import { Link } from '@inertiajs/vue3';
+import axios from 'axios';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -22,9 +25,61 @@ const props = defineProps({
     filters: Object,
     options: Object,
     can: Object,
+    columnOrder: { type: Array, default: () => [] },
+    columnDefault: { type: Array, default: () => [] },
 });
 
-const showValue = computed(() => props.leads.data.some((l) => 'estimated_value' in l));
+const toast = useToast();
+const columns = ref([...props.columnOrder]);
+watch(() => props.columnOrder, (order) => (columns.value = [...order]));
+const columnsCustomized = computed(() => columns.value.join() !== props.columnDefault.join());
+
+const COLUMN_LABEL = {
+    lead: 'Lead',
+    contact: 'Contact',
+    created_at: 'Date',
+    status: 'Status',
+    priority: 'Priority',
+    source: 'Source',
+    owner: 'Owner',
+    batches: 'Batches',
+    city: 'City',
+    value: 'Value',
+    updated_at: 'Updated',
+};
+const SORTABLE = { priority: 'priority', created_at: 'created_at', updated_at: 'updated_at' };
+
+const dragging = ref(null);
+const dragOver = ref(null);
+const startDrag = (key, event) => {
+    dragging.value = key;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', key);
+};
+const endDrag = () => {
+    dragging.value = null;
+    dragOver.value = null;
+};
+let savedColumns = [...props.columnOrder];
+const persistColumns = async (next, { reset = false } = {}) => {
+    const previous = savedColumns;
+    columns.value = next;
+    try {
+        const { data } = await axios.put(route('leads.columns'), reset ? { reset: true } : { columns: next });
+        columns.value = data.columns;
+        savedColumns = [...data.columns];
+    } catch {
+        columns.value = previous;
+        toast.error('Could not save the column order.');
+    }
+};
+const dropColumn = (key) => {
+    const next = reorderColumns(columns.value, dragging.value, key);
+    const changed = next.join() !== columns.value.join();
+    endDrag();
+    if (changed) persistColumns(next);
+};
+const resetColumns = () => persistColumns([...props.columnDefault], { reset: true });
 
 const keys = ['search', 'status', 'source', 'campaign', 'facebook_page', 'facebook_form', 'assignee', 'priority', 'city', 'state', 'on', 'created_from', 'created_to', 'age', 'duplicates', 'archived', 'batch', 'sort', 'direction', 'per_page'];
 const { filters, reset } = useFilters(Object.fromEntries(keys.map((k) => [k, props.filters[k] ?? ''])), route('leads.index'));
@@ -48,7 +103,7 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
 const pickDay = (day) => {
     filters.on = filters.on === day ? '' : day;
 };
-const colSpan = computed(() => 9 + (showValue.value ? 1 : 0) + (props.can.viewBatches ? 1 : 0) + (props.can.addToBatch ? 1 : 0));
+const colSpan = computed(() => columns.value.length + (props.can.addToBatch ? 1 : 0));
 
 const selected = ref([]);
 watch(
@@ -165,6 +220,11 @@ const clearDateSort = () => {
                 <button type="button" class="text-slate-500 hover:text-slate-800" @click="selected = []">Clear</button>
             </div>
 
+            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-1.5 text-2xs text-slate-400">
+                <span>Drag a column heading to rearrange. This order is saved for you.</span>
+                <button v-if="columnsCustomized" type="button" class="font-medium text-slate-500 hover:text-slate-800" @click="resetColumns">Reset columns</button>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="data-table">
                     <thead>
@@ -172,21 +232,34 @@ const clearDateSort = () => {
                             <th v-if="can.addToBatch" class="w-8">
                                 <input type="checkbox" class="rounded border-slate-300 text-brand-600" :checked="allSelected" :disabled="!selectableIds.length" aria-label="Select all leads on this page" @change="toggleAll" />
                             </th>
-                            <th>
-                                <button type="button" class="uppercase tracking-[0.08em] hover:text-slate-700" @click="sortBy('full_name')">Lead {{ sortIcon('full_name') }}</button>
-                                <span class="mx-1 text-slate-300">/</span>
-                                <button type="button" class="uppercase tracking-[0.08em] hover:text-slate-700" @click="sortBy('lead_number')">No. {{ sortIcon('lead_number') }}</button>
+                            <th
+                                v-for="key in columns"
+                                :key="key"
+                                :class="[key === 'value' ? 'text-right' : '', dragOver === key ? 'bg-brand-50' : '', dragging === key ? 'opacity-50' : '']"
+                                @dragover.prevent="dragOver = key"
+                                @dragleave="dragOver = dragOver === key ? null : dragOver"
+                                @drop.prevent="dropColumn(key)"
+                            >
+                                <span class="inline-flex items-center gap-1" :class="key === 'value' ? 'justify-end' : ''">
+                                    <button
+                                        type="button"
+                                        class="cursor-grab text-slate-300 hover:text-slate-500 active:cursor-grabbing"
+                                        draggable="true"
+                                        :aria-label="`Move ${COLUMN_LABEL[key]} column`"
+                                        @dragstart="startDrag(key, $event)"
+                                        @dragend="endDrag"
+                                    >
+                                        <AppIcon name="menu" class="h-3.5 w-3.5" />
+                                    </button>
+                                    <template v-if="key === 'lead'">
+                                        <button type="button" class="hover:text-slate-700" @click="sortBy('full_name')">Lead {{ sortIcon('full_name') }}</button>
+                                        <span class="text-slate-300">/</span>
+                                        <button type="button" class="hover:text-slate-700" @click="sortBy('lead_number')">No. {{ sortIcon('lead_number') }}</button>
+                                    </template>
+                                    <button v-else-if="SORTABLE[key]" type="button" class="hover:text-slate-700" @click="sortBy(SORTABLE[key])">{{ COLUMN_LABEL[key] }} {{ sortIcon(SORTABLE[key]) }}</button>
+                                    <template v-else>{{ COLUMN_LABEL[key] }}</template>
+                                </span>
                             </th>
-                            <th>Contact</th>
-                            <th>Status</th>
-                            <th class="cursor-pointer select-none" @click="sortBy('priority')">Priority {{ sortIcon('priority') }}</th>
-                            <th>Source</th>
-                            <th>Owner</th>
-                            <th v-if="can.viewBatches">Batches</th>
-                            <th>City</th>
-                            <th v-if="showValue" class="text-right">Value</th>
-                            <th class="cursor-pointer select-none" @click="sortBy('created_at')">Date {{ sortIcon('created_at') }}</th>
-                            <th class="cursor-pointer select-none" @click="sortBy('updated_at')">Updated {{ sortIcon('updated_at') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -204,53 +277,55 @@ const clearDateSort = () => {
                             <td v-if="can.addToBatch">
                                 <input v-if="!row.lead.archived" v-model="selected" type="checkbox" :value="row.lead.id" class="rounded border-slate-300 text-brand-600" :aria-label="`Select ${row.lead.lead_number}`" />
                             </td>
-                            <td>
-                                <div class="flex items-center gap-3">
-                                    <Avatar :name="row.lead.full_name" size="md" />
-                                    <div class="min-w-0">
-                                        <Link :href="route('leads.show', row.lead.id)" class="block max-w-[220px] truncate font-semibold text-slate-900 hover:text-brand-700">{{ row.lead.full_name }}</Link>
-                                        <p class="flex items-center gap-1.5 text-2xs text-slate-500">
-                                            <Link :href="route('leads.show', row.lead.id)" class="font-mono font-semibold text-slate-700 hover:text-brand-600" :title="`Real ID ${row.lead.id}`">{{ row.lead.id }}</Link>
-                                            <span class="text-slate-300">·</span>
-                                            <Link :href="route('leads.show', row.lead.id)" class="font-mono hover:text-brand-600">{{ row.lead.lead_number }}</Link>
-                                            <span v-if="row.lead.company_name" class="max-w-[140px] truncate">· {{ row.lead.company_name }}</span>
-                                            <UiBadge v-if="row.lead.is_duplicate" color="amber">Dup</UiBadge>
-                                            <UiBadge v-if="row.lead.archived" color="slate">Archived</UiBadge>
-                                        </p>
+                            <td v-for="key in columns" :key="key" :class="key === 'value' ? 'text-right' : ''">
+                                <template v-if="key === 'lead'">
+                                    <div class="flex items-center gap-3">
+                                        <Avatar :name="row.lead.full_name" size="md" />
+                                        <div class="min-w-0">
+                                            <Link :href="route('leads.show', row.lead.id)" class="block max-w-[220px] truncate font-semibold text-slate-900 hover:text-brand-700">{{ row.lead.full_name }}</Link>
+                                            <p class="flex items-center gap-1.5 text-2xs text-slate-500">
+                                                <Link :href="route('leads.show', row.lead.id)" class="font-mono font-semibold text-slate-700 hover:text-brand-600" :title="`Real ID ${row.lead.id}`">{{ row.lead.id }}</Link>
+                                                <span class="text-slate-300">·</span>
+                                                <Link :href="route('leads.show', row.lead.id)" class="font-mono hover:text-brand-600">{{ row.lead.lead_number }}</Link>
+                                                <span v-if="row.lead.company_name" class="max-w-[140px] truncate">· {{ row.lead.company_name }}</span>
+                                                <UiBadge v-if="row.lead.is_duplicate" color="amber">Dup</UiBadge>
+                                                <UiBadge v-if="row.lead.archived" color="slate">Archived</UiBadge>
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="text-xs">
-                                <p class="whitespace-nowrap">{{ row.lead.phone ?? '—' }}</p>
-                                <p v-if="row.lead.email" class="max-w-[180px] truncate text-2xs text-slate-500">{{ row.lead.email }}</p>
-                            </td>
-                            <td><UiBadge v-if="row.lead.status" :color="row.lead.status.color" dot>{{ row.lead.status.name }}</UiBadge></td>
-                            <td><PriorityBadge :priority="row.lead.priority" /></td>
-                            <td class="text-xs">
-                                {{ row.lead.source?.name ?? '—' }}
-                                <p v-if="row.lead.campaign" class="max-w-[140px] truncate text-2xs text-slate-500">{{ row.lead.campaign.name }}</p>
-                            </td>
-                            <td class="text-xs">
-                                <div v-if="row.lead.assignee" class="flex items-center gap-2">
-                                    <Avatar :name="row.lead.assignee.name" size="xs" />
-                                    <p class="min-w-0 truncate text-slate-800">{{ row.lead.assignee.name }}</p>
-                                </div>
-                                <UiBadge v-else color="amber">Unassigned</UiBadge>
-                            </td>
-                            <td v-if="can.viewBatches" class="text-xs">
-                                <span v-if="row.batches.shown.length" class="inline-flex max-w-[160px] items-center gap-1">
-                                    <span v-for="b in row.batches.shown" :key="b.id" class="truncate rounded bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-700" :title="b.name">{{ b.name }}</span>
-                                    <span v-if="row.batches.more" class="shrink-0 cursor-help rounded bg-slate-100 px-1.5 py-0.5 text-2xs font-semibold text-slate-600" :title="row.batches.title">+{{ row.batches.more }}</span>
+                                </template>
+                                <template v-else-if="key === 'contact'">
+                                    <p>{{ row.lead.phone ?? '—' }}</p>
+                                    <p v-if="row.lead.email" class="max-w-[180px] truncate text-2xs text-slate-500">{{ row.lead.email }}</p>
+                                </template>
+                                <UiBadge v-else-if="key === 'status' && row.lead.status" :color="row.lead.status.color" dot>{{ row.lead.status.name }}</UiBadge>
+                                <PriorityBadge v-else-if="key === 'priority'" :priority="row.lead.priority" />
+                                <template v-else-if="key === 'source'">
+                                    {{ row.lead.source?.name ?? '—' }}
+                                    <p v-if="row.lead.campaign" class="max-w-[140px] truncate text-2xs text-slate-500">{{ row.lead.campaign.name }}</p>
+                                </template>
+                                <template v-else-if="key === 'owner'">
+                                    <div v-if="row.lead.assignee" class="flex items-center gap-2">
+                                        <Avatar :name="row.lead.assignee.name" size="xs" />
+                                        <p class="min-w-0 truncate text-slate-800">{{ row.lead.assignee.name }}</p>
+                                    </div>
+                                    <UiBadge v-else color="amber">Unassigned</UiBadge>
+                                </template>
+                                <template v-else-if="key === 'batches'">
+                                    <span v-if="row.batches.shown.length" class="inline-flex max-w-[160px] items-center gap-1">
+                                        <span v-for="b in row.batches.shown" :key="b.id" class="truncate rounded bg-slate-100 px-1.5 py-0.5 text-2xs text-slate-700" :title="b.name">{{ b.name }}</span>
+                                        <span v-if="row.batches.more" class="shrink-0 cursor-help rounded bg-slate-100 px-1.5 py-0.5 text-2xs font-semibold text-slate-600" :title="row.batches.title">+{{ row.batches.more }}</span>
+                                    </span>
+                                    <span v-else class="text-slate-400">—</span>
+                                </template>
+                                <template v-else-if="key === 'city'">{{ row.lead.city ?? '—' }}</template>
+                                <template v-else-if="key === 'value'">{{ formatCurrency(row.lead.estimated_value) }}</template>
+                                <span v-else-if="key === 'created_at'" :title="formatDateTime(row.lead.created_at)">
+                                    <p class="font-medium text-slate-800">{{ formatDate(row.lead.created_at) }}</p>
+                                    <p class="font-medium" :class="ageClass(row.lead.age_days)">{{ row.lead.age_days }}d</p>
                                 </span>
-                                <span v-else class="text-slate-400">—</span>
+                                <span v-else-if="key === 'updated_at'" class="text-slate-500" :title="formatDateTime(row.lead.updated_at)">{{ timeAgo(row.lead.updated_at) }}</span>
                             </td>
-                            <td class="text-xs">{{ row.lead.city ?? '—' }}</td>
-                            <td v-if="showValue" class="whitespace-nowrap text-right text-xs">{{ formatCurrency(row.lead.estimated_value) }}</td>
-                            <td class="whitespace-nowrap text-xs" :title="formatDateTime(row.lead.created_at)">
-                                <p class="font-medium text-slate-800">{{ formatDate(row.lead.created_at) }}</p>
-                                <p class="font-medium" :class="ageClass(row.lead.age_days)">{{ row.lead.age_days }}d</p>
-                            </td>
-                            <td class="whitespace-nowrap text-xs text-slate-500" :title="formatDateTime(row.lead.updated_at)">{{ timeAgo(row.lead.updated_at) }}</td>
                         </tr>
                         </template>
                     </tbody>
