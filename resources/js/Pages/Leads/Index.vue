@@ -61,11 +61,19 @@ const endDrag = () => {
     dragOver.value = null;
 };
 let savedColumns = [...props.columnOrder];
+/** Prefer Ziggy; fall back when the server route cache is stale after deploy. */
+const columnsUrl = () => {
+    try {
+        return route('leads.columns');
+    } catch {
+        return '/leads/columns';
+    }
+};
 const persistColumns = async (next, { reset = false } = {}) => {
     const previous = savedColumns;
     columns.value = next;
     try {
-        const { data } = await axios.put(route('leads.columns'), reset ? { reset: true } : { columns: next });
+        const { data } = await axios.put(columnsUrl(), reset ? { reset: true } : { columns: next });
         columns.value = data.columns;
         savedColumns = [...data.columns];
     } catch {
