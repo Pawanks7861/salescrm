@@ -6,7 +6,7 @@ import FormField from '@/Components/ui/FormField.vue';
 import UiButton from '@/Components/ui/UiButton.vue';
 import { nextSlot } from '@/utils/format';
 import { useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 /**
  * Create a follow-up (fixed lead from Lead 360, or picked from the module) or
@@ -64,6 +64,16 @@ watch(
 watch(pickedLead, (lead) => (form.lead_id = lead?.id ?? null));
 
 const canAssign = computed(() => props.options.assignees?.length > 0);
+const descriptionBox = ref(null);
+
+const fitDescription = () => {
+    const el = descriptionBox.value;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+};
+
+watch(() => form.description, () => nextTick(fitDescription));
 
 const submit = (confirmDuplicate = false) => {
     if (!editing.value && !form.lead_id) {
@@ -131,7 +141,7 @@ const submit = (confirmDuplicate = false) => {
                     <input v-model="form.title" type="text" class="form-input" maxlength="191" placeholder="e.g. Share quotation" />
                 </FormField>
                 <FormField label="Description" :error="form.errors.description" class="sm:col-span-2">
-                    <textarea v-model="form.description" rows="2" class="form-input" maxlength="5000" />
+                    <textarea ref="descriptionBox" v-model="form.description" rows="2" class="form-input max-h-60 resize-none overflow-y-auto" maxlength="5000" @input="fitDescription" />
                 </FormField>
 
                 <div v-if="form.errors.duplicate" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:col-span-2">

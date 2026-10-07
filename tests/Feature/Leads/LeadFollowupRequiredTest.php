@@ -143,6 +143,24 @@ test('a user without lead view cannot open the page', function () {
         ->assertForbidden();
 });
 
+test('the dashboard lead total counts only leads with no follow-up from 1 october 2026', function () {
+    attentionLead($this->org->rahul, '2026-10-02 10:00:00');
+    attentionLead($this->org->rahul, '2026-09-20 10:00:00');
+    $withFollowup = attentionLead($this->org->priya, '2026-10-03 10:00:00');
+    attentionFollowups($withFollowup, completed: 1);
+    attentionLead($this->org->admin, '2026-10-09 10:00:00');
+    Lead::factory()->create(['created_at' => ist('2026-10-04 10:00:00'), 'updated_at' => ist('2026-10-04 10:00:00')]);
+    Lead::factory()->create(['created_at' => ist('2026-09-15 10:00:00'), 'updated_at' => ist('2026-09-15 10:00:00')]);
+
+    $admin = $this->actingAs($this->org->admin)->get('/dashboard')->assertOk()->inertiaProps('sales');
+    $rahul = $this->actingAs($this->org->rahul)->get('/dashboard')->assertOk()->inertiaProps('sales');
+
+    expect($admin['leads'])->toBe(3)
+        ->and($admin['unassigned'])->toBe(1)
+        ->and($rahul['leads'])->toBe(1)
+        ->and($rahul['unassigned'])->toBeNull();
+});
+
 test('the dashboard count is the distinct total and names the page', function () {
     attentionLead($this->org->rahul, '2026-10-01 10:00:00');
     $missing = attentionLead($this->org->priya, '2026-10-04 10:00:00');

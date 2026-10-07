@@ -168,10 +168,18 @@ class DashboardController extends Controller
                 ->values()
             : null;
 
+        $withoutFollowup = $canViewLeads
+            ? Lead::query()->visibleTo($user)
+                ->where('leads.created_at', '>=', $this->followupRequiredLeads->eligibleFrom())
+                ->whereDoesntHave('followups')
+            : null;
+
         return [
             'scope' => $tier === FollowupVisibility::ALL ? 'Company' : 'My',
-            'leads' => $canViewLeads ? Lead::query()->visibleTo($user)->count() : null,
-            'unassigned' => $user->hasPermission(Permissions::LEAD_VIEW_ALL) ? Lead::query()->whereNull('assigned_to')->count() : null,
+            'leads' => $withoutFollowup ? (clone $withoutFollowup)->count() : null,
+            'unassigned' => $user->hasPermission(Permissions::LEAD_VIEW_ALL) && $withoutFollowup
+                ? (clone $withoutFollowup)->whereNull('leads.assigned_to')->count()
+                : null,
             'counts' => $this->followupMetrics->summary($user),
             'overdue' => $list('overdue'),
             'today' => $list('today'),
