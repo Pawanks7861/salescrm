@@ -15,7 +15,7 @@ import { useFilters } from '@/Composables/useFilters';
 import { useToast } from '@/Composables/useToast';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { batchTags } from '@/utils/batches';
-import { crmParts, formatCurrency, formatDate, formatDateTime, formatDayHeading, timeAgo } from '@/utils/format';
+import { crmParts, formatCurrency, formatDate, formatDateTime, formatDayHeading, formatTime, timeAgo } from '@/utils/format';
 import { reorderColumns } from '@/utils/leadColumns';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -108,6 +108,15 @@ const sortBy = (column) => {
 const sortIcon = (column) => ((filters.sort || 'created_at') === column ? ((filters.direction || 'desc') === 'asc' ? '↑' : '↓') : '');
 const sortedByCreated = computed(() => !filters.sort || filters.sort === 'created_at');
 
+const statusDot = {
+    slate: 'bg-slate-500', gray: 'bg-slate-500', green: 'bg-emerald-500', emerald: 'bg-emerald-500', red: 'bg-red-500',
+    amber: 'bg-amber-500', yellow: 'bg-amber-500', blue: 'bg-sky-500', sky: 'bg-sky-500', cyan: 'bg-cyan-500',
+    indigo: 'bg-brand-500', purple: 'bg-purple-500', violet: 'bg-purple-500', orange: 'bg-orange-500', teal: 'bg-teal-500', pink: 'bg-pink-500',
+};
+const statusActive = (id) => String(filters.status ?? '') === String(id);
+const pickStatus = (id) => {
+    filters.status = id === '' ? '' : String(id);
+};
 const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-slate-600' : days <= 7 ? 'text-amber-600' : 'text-red-600');
 const pickDay = (day) => {
     filters.on = filters.on === day ? '' : day;
@@ -161,10 +170,6 @@ const clearDateSort = () => {
             <FilterBar bare :active-count="activeCount" @clear="reset">
                 <div class="flex flex-wrap items-center gap-2">
                     <SearchInput v-model="filters.search" placeholder="Real ID, lead no., phone, name, email…" class="w-full sm:w-72" />
-                    <select v-model="filters.status" class="form-input w-36">
-                        <option value="">All statuses</option>
-                        <option v-for="s in options.statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
-                    </select>
                     <select v-model="filters.source" class="form-input w-32">
                         <option value="">All sources</option>
                         <option v-for="s in options.sources" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -236,6 +241,21 @@ const clearDateSort = () => {
                 <span>Drag a column heading to rearrange. This order is saved for you.</span>
                 <button v-if="columnsCustomized" type="button" class="font-medium text-slate-500 hover:text-slate-800" @click="resetColumns">Reset columns</button>
             </div>
+
+            <nav class="scrollbar-none flex gap-1 overflow-x-auto border-b border-slate-100 px-3" aria-label="Status">
+                <button type="button" class="tab-btn" :class="statusActive('') ? 'border-brand-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'" @click="pickStatus('')">All</button>
+                <button
+                    v-for="s in options.statuses"
+                    :key="s.id"
+                    type="button"
+                    class="tab-btn"
+                    :class="statusActive(s.id) ? 'border-brand-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'"
+                    @click="pickStatus(s.id)"
+                >
+                    <span class="h-1.5 w-1.5 rounded-full" :class="statusDot[s.color] || 'bg-slate-500'" aria-hidden="true" />
+                    {{ s.name }}
+                </button>
+            </nav>
 
             <div class="overflow-x-auto">
                 <table class="data-table">
@@ -334,6 +354,7 @@ const clearDateSort = () => {
                                 <template v-else-if="key === 'value'">{{ formatCurrency(row.lead.estimated_value) }}</template>
                                 <span v-else-if="key === 'created_at'" :title="formatDateTime(row.lead.created_at)">
                                     <p class="font-medium text-slate-800">{{ formatDate(row.lead.created_at) }}</p>
+                                    <p class="text-2xs text-slate-500">{{ formatTime(row.lead.created_at) }}</p>
                                     <p class="font-medium" :class="ageClass(row.lead.age_days)">{{ row.lead.age_days }}d</p>
                                 </span>
                                 <span v-else-if="key === 'updated_at'" class="text-slate-500" :title="formatDateTime(row.lead.updated_at)">{{ timeAgo(row.lead.updated_at) }}</span>
