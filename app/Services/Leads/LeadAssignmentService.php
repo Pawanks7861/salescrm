@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  */
 class LeadAssignmentService
 {
+    public const MAX_BULK = 100;
+
     public function __construct(
         private readonly LeadVisibility $visibility,
         private readonly ActivityService $activities,
@@ -45,6 +47,54 @@ class LeadAssignmentService
         $target = $this->resolveAssignableUser($actor, $toUserId);
 
         return $this->assign($lead, $target, AssignmentType::Manual, $actor, $reason);
+    }
+
+    /**
+     * Assign several leads to one user. Super Admin and Admin only. Every id
+     * is checked before anything is written, and each change still goes through
+     * the normal history, activity, audit and notification path.
+     *
+     * @param  array<int|string>  $leadIds
+     * @return int number of leads whose owner actually changed
+     *
+     * @throws AuthorizationException|ValidationException
+     */
+    public function assignMany(User $actor, array $leadIds, int $toUserId, ?string $reason = null): int
+    {
+        if (! $actor->isAdmin()) {
+            throw new AuthorizationException('You are not allowed to assign these leads.');
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $leadIds)));
+
+        if (count($ids) > self::MAX_BULK) {
+            throw ValidationException::withMessages(['lead_ids' => 'Select at most '.self::MAX_BULK.' leads at a time.']);
+        }
+
+        $leads = Lead::query()->visibleTo($actor)->whereIn('id', $ids)->get();
+
+        if ($leads->count() !== count($ids)) {
+            throw ValidationException::withMessages(['lead_ids' => 'One or more selected leads do not exist or are not available to you.']);
+        }
+
+        foreach ($leads as $lead) {
+            $required = $lead->assigned_to === null ? Permissions::LEAD_ASSIGN : Permissions::LEAD_REASSIGN;
+
+            if (! $actor->hasPermission($required)) {
+                throw new AuthorizationException('You are not allowed to assign this lead.');
+            }
+        }
+
+        $target = $this->resolveAssignableUser($actor, $toUserId);
+        $changed = 0;
+
+        foreach ($leads as $lead) {
+            if ($this->assign($lead, $target, AssignmentType::Manual, $actor, $reason)) {
+                $changed++;
+            }
+        }
+
+        return $changed;
     }
 
     /**

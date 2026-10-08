@@ -164,6 +164,7 @@ class LeadController extends Controller
                         ->limit(self::BATCH_FILTER_LIMIT)->get(['id', 'name', 'status'])
                         ->map(fn (Batch $b) => [...$b->only('id', 'name'), 'archived' => $b->isArchived()])
                     : [],
+                'assignees' => $user->isAdmin() ? $this->options->assignableUsers($user) : [],
             ],
             'can' => [
                 'create' => $user->can('create', Lead::class),
@@ -173,6 +174,7 @@ class LeadController extends Controller
                 'addToBatch' => $viewBatches && $user->hasPermission(Permissions::BATCH_MANAGE_LEADS),
                 'createBatch' => $user->can('create', Batch::class),
                 'manageBatchTrainers' => $user->hasPermission(Permissions::BATCH_MANAGE_TRAINERS),
+                'bulkAssign' => $user->isAdmin() && $user->hasAnyPermission(Permissions::LEAD_ASSIGN, Permissions::LEAD_REASSIGN),
             ],
         ]);
     }

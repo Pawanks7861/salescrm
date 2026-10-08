@@ -1,5 +1,6 @@
 <script setup>
 import AddToBatchModal from '@/Components/batches/AddToBatchModal.vue';
+import BulkAssignModal from '@/Components/leads/BulkAssignModal.vue';
 import PriorityBadge from '@/Components/leads/PriorityBadge.vue';
 import AppIcon from '@/Components/ui/AppIcon.vue';
 import Avatar from '@/Components/ui/Avatar.vue';
@@ -111,7 +112,8 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
 const pickDay = (day) => {
     filters.on = filters.on === day ? '' : day;
 };
-const colSpan = computed(() => columns.value.length + (props.can.addToBatch ? 1 : 0));
+const canSelect = computed(() => props.can.addToBatch || props.can.bulkAssign);
+const colSpan = computed(() => columns.value.length + (canSelect.value ? 1 : 0));
 
 const selected = ref([]);
 watch(
@@ -122,6 +124,7 @@ const selectableIds = computed(() => props.leads.data.filter((l) => !l.archived)
 const allSelected = computed(() => selectableIds.value.length > 0 && selectableIds.value.every((id) => selected.value.includes(id)));
 const toggleAll = () => (selected.value = allSelected.value ? [] : [...selectableIds.value]);
 const addingToBatch = ref(false);
+const assigning = ref(false);
 const groupedRows = computed(() => {
     const rows = props.leads.data;
     const leadRow = (lead) => ({ type: 'lead', lead, batches: batchTags(lead.batches) });
@@ -222,9 +225,10 @@ const clearDateSort = () => {
                 </div>
             </FilterBar>
 
-            <div v-if="can.addToBatch && selected.length" class="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-brand-50/60 px-5 py-2.5 text-xs">
+            <div v-if="canSelect && selected.length" class="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-brand-50/60 px-5 py-2.5 text-xs">
                 <span class="font-semibold text-slate-800">{{ selected.length }} selected</span>
-                <UiButton size="sm" icon="stack" @click="addingToBatch = true">Add to Batch</UiButton>
+                <UiButton v-if="can.bulkAssign" size="sm" icon="switch" data-testid="bulk-assign" @click="assigning = true">Assign</UiButton>
+                <UiButton v-if="can.addToBatch" size="sm" icon="stack" @click="addingToBatch = true">Add to Batch</UiButton>
                 <button type="button" class="text-slate-500 hover:text-slate-800" @click="selected = []">Clear</button>
             </div>
 
@@ -237,7 +241,7 @@ const clearDateSort = () => {
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th v-if="can.addToBatch" class="w-8">
+                            <th v-if="canSelect" class="w-8">
                                 <input type="checkbox" class="rounded border-slate-300 text-brand-600" :checked="allSelected" :disabled="!selectableIds.length" aria-label="Select all leads on this page" @change="toggleAll" />
                             </th>
                             <th
@@ -282,7 +286,7 @@ const clearDateSort = () => {
                             <td :colspan="colSpan" class="py-2.5 text-sm font-semibold tracking-tight text-slate-800">{{ row.label }}</td>
                         </tr>
                         <tr v-else :class="{ 'opacity-60': row.lead.archived }">
-                            <td v-if="can.addToBatch">
+                            <td v-if="canSelect">
                                 <input v-if="!row.lead.archived" v-model="selected" type="checkbox" :value="row.lead.id" class="rounded border-slate-300 text-brand-600" :aria-label="`Select ${row.lead.lead_number}`" />
                             </td>
                             <td v-for="key in columns" :key="key" :class="key === 'value' ? 'text-right' : ''">
@@ -344,5 +348,6 @@ const clearDateSort = () => {
         </div>
 
         <AddToBatchModal v-if="can.addToBatch" :show="addingToBatch" :lead-ids="selected" :can-create="can.createBatch" :can-assign-trainers="can.manageBatchTrainers" @close="addingToBatch = false" @added="selected = []" />
+        <BulkAssignModal v-if="can.bulkAssign" :show="assigning" :lead-ids="selected" :users="options.assignees" @close="assigning = false" @assigned="selected = []" />
     </AppLayout>
 </template>
