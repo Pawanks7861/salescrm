@@ -88,7 +88,7 @@
     /* Thin dark scrollbars */
     * {
         scrollbar-width: thin;
-        scrollbar-color: #2b3550 transparent;
+        scrollbar-color: var(--scrollbar) transparent;
     }
 
     ::-webkit-scrollbar {
@@ -101,14 +101,14 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        background-color: #2b3550;
+        background-color: var(--scrollbar);
         border-radius: 999px;
         border: 2px solid transparent;
         background-clip: content-box;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background-color: #3a4666;
+        background-color: var(--scrollbar-hover);
     }
 }
 

@@ -80,6 +80,22 @@ export const CHART_THEME = {
     border: '#273149',
 };
 
+/** Canvas colours follow the active theme (dark or white). */
+export function chartTheme() {
+    if (typeof document === 'undefined') return CHART_THEME;
+    const style = getComputedStyle(document.documentElement);
+    const pick = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
+    return {
+        title: pick('--text-primary', CHART_THEME.title),
+        text: pick('--text-secondary', CHART_THEME.text),
+        muted: pick('--text-muted', CHART_THEME.muted),
+        grid: pick('--chart-grid', CHART_THEME.grid),
+        surface: pick('--surface-1', CHART_THEME.surface),
+        tooltip: pick('--surface-4', CHART_THEME.tooltip),
+        border: pick('--border', CHART_THEME.border),
+    };
+}
+
 export const colorFor = (name, index) => NAMED_COLORS[name] ?? (name?.startsWith?.('#') ? name : CHART_COLORS[index % CHART_COLORS.length]);
 
 export const CHART_COLORS = ['#7c74ff', '#4ed7a8', '#f4b646', '#f35c78', '#55b8ff', '#a66cff', '#5e6986', '#38d4be', '#fb925a', '#a3e36b'];

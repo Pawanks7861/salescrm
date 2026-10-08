@@ -1,6 +1,7 @@
 <script setup>
 import BrandMark from '@/Components/ui/BrandMark.vue';
 import PoweredBy from '@/Components/ui/PoweredBy.vue';
+import ThemeSwitch from '@/Components/ui/ThemeSwitch.vue';
 import { usePage } from '@inertiajs/vue3';
 import { computed, onMounted } from 'vue';
 
@@ -28,6 +29,7 @@ const brandName = computed(() => page.props.app?.company || page.props.app?.name
             <p class="relative text-xs text-slate-400">Authorised personnel only. All activity is logged.</p>
         </div>
         <div class="flex flex-1 items-center justify-center px-6 py-12">
+            <div class="absolute right-4 top-4"><ThemeSwitch /></div>
             <div class="w-full max-w-sm">
                 <div class="mb-8">
                     <BrandMark size="lg" />

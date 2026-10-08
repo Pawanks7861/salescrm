@@ -12,6 +12,7 @@ import PoweredBy from '@/Components/ui/PoweredBy.vue';
 import ToastContainer from '@/Components/ui/ToastContainer.vue';
 import GlobalLeadSearch from '@/Components/leads/GlobalLeadSearch.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
+import ThemeSwitch from '@/Components/ui/ThemeSwitch.vue';
 import PriorityBanner from '@/Components/chat/PriorityBanner.vue';
 import { liveChatUnread, livePriority, startLive } from '@/chat/live';
 import { usePermissions } from '@/Composables/usePermissions';
@@ -200,6 +201,7 @@ onUnmounted(() => listeners.splice(0).forEach((off) => off()));
                     </slot>
                 </div>
 
+                <ThemeSwitch />
                 <Link
                     v-if="hasRoute('chat.index') && can('chat.use')"
                     :href="route('chat.index')"

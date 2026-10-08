@@ -1,8 +1,7 @@
 /*
- * Sales CRM design tokens (dark theme).
- * Every colour used by the UI resolves to one of these variables — Tailwind's
- * palette is mapped onto them in tailwind.config.js, so components should use
- * Tailwind classes or these variables, never raw hex values.
+ * Sales CRM design tokens. Dark is the default (:root). White is
+ * html[data-theme="light"]. Tailwind's palette is mapped onto these
+ * variables in tailwind.config.js, so both themes share one markup.
  * Channel variants (--rgb-*) exist so Tailwind opacity modifiers keep working.
  */
 :root {
@@ -75,6 +74,18 @@
     --rgb-pink: 244 114 182;
     --rgb-lime: 163 227 107;
     --rgb-fuchsia: 226 121 249;
+    --rgb-slate-400: 74 85 115;
+    --rgb-slate-500: 94 105 134;
+    --rgb-slate-950: 5 7 13;
+    --rgb-text-50: 27 34 52;
+    --rgb-text-200: 58 69 96;
+    --rgb-brand-text-700: 178 173 255;
+    --rgb-brand-text-800: 199 201 255;
+    --rgb-brand-text-900: 224 226 255;
+
+    --scrollbar: #2b3550;
+    --scrollbar-hover: #3a4666;
+    --chart-grid: rgba(148, 163, 184, 0.08);
 
     /* Shape + depth */
     --radius-sm: 8px;
@@ -89,4 +100,87 @@
     --sidebar-width: 264px;
     --header-height: 64px;
     --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-theme='light'] {
+    color-scheme: light;
+
+    --app-bg: #f4f6fb;
+    --content-bg: #f7f8fc;
+    --sidebar-bg: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #f8fafc;
+    --surface-3: #f1f5f9;
+    --surface-4: #e8eef6;
+    --input-bg: #ffffff;
+    --overlay: rgb(15 23 42 / 0.45);
+
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --border-light: rgba(15, 23, 42, 0.08);
+
+    --text-primary: #0f172a;
+    --text-strong: #1e293b;
+    --text-body: #334155;
+    --text-secondary: #475569;
+    --text-subtle: #64748b;
+    --text-muted: #64748b;
+    --text-faint: #94a3b8;
+
+    --primary: #4f46e5;
+    --primary-light: #6366f1;
+    --primary-strong: #4338ca;
+    --primary-text: #4338ca;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #e11d48;
+    --info: #0284c7;
+    --cyan: #0891b2;
+    --purple: #7c3aed;
+
+    --rgb-app-bg: 244 246 251;
+    --rgb-content-bg: 247 248 252;
+    --rgb-sidebar-bg: 255 255 255;
+    --rgb-surface-1: 255 255 255;
+    --rgb-surface-2: 248 250 252;
+    --rgb-surface-3: 241 245 249;
+    --rgb-surface-4: 232 238 246;
+    --rgb-border: 226 232 240;
+    --rgb-border-strong: 203 213 225;
+    --rgb-text-primary: 15 23 42;
+    --rgb-text-strong: 30 41 59;
+    --rgb-text-body: 51 65 85;
+    --rgb-text-secondary: 71 85 105;
+    --rgb-text-subtle: 100 116 139;
+    --rgb-text-muted: 100 116 139;
+    --rgb-text-faint: 148 163 184;
+    --rgb-primary: 79 70 229;
+    --rgb-primary-light: 99 102 241;
+    --rgb-success: 5 150 105;
+    --rgb-warning: 217 119 6;
+    --rgb-danger: 225 29 72;
+    --rgb-info: 2 132 199;
+    --rgb-cyan: 8 145 178;
+    --rgb-purple: 124 58 237;
+    --rgb-orange: 194 65 12;
+    --rgb-teal: 15 118 110;
+    --rgb-pink: 190 24 93;
+    --rgb-lime: 77 124 15;
+    --rgb-fuchsia: 162 28 175;
+    --rgb-slate-400: 148 163 184;
+    --rgb-slate-500: 100 116 139;
+    --rgb-slate-950: 15 23 42;
+    --rgb-text-50: 248 250 252;
+    --rgb-text-200: 226 232 240;
+    --rgb-brand-text-700: 67 56 202;
+    --rgb-brand-text-800: 55 48 163;
+    --rgb-brand-text-900: 49 46 129;
+
+    --scrollbar: #cbd5e1;
+    --scrollbar-hover: #94a3b8;
+    --chart-grid: rgba(15, 23, 42, 0.08);
+
+    --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 24px -16px rgb(15 23 42 / 0.12);
+    --shadow-pop: 0 24px 48px -16px rgb(15 23 42 / 0.2), 0 0 0 1px rgb(var(--rgb-border));
+    --shadow-glow: 0 8px 20px -8px rgb(var(--rgb-primary) / 0.45);
 }

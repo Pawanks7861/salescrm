@@ -1,5 +1,5 @@
 <script setup>
-import { CHART_THEME, colorFor, formatValue } from '@/utils/reportFormat';
+import { chartTheme, colorFor, formatValue } from '@/utils/reportFormat';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 // Chart.js is loaded on demand and only the pieces we use are registered,
@@ -21,14 +21,16 @@ async function load() {
     if (ChartClass) return ChartClass;
     const m = await import('chart.js');
     m.Chart.register(m.BarController, m.BarElement, m.LineController, m.LineElement, m.PointElement, m.DoughnutController, m.ArcElement, m.CategoryScale, m.LinearScale, m.Tooltip, m.Legend);
-    m.Chart.defaults.color = CHART_THEME.text;
-    m.Chart.defaults.borderColor = CHART_THEME.grid;
+    const colors = chartTheme();
+    m.Chart.defaults.color = colors.text;
+    m.Chart.defaults.borderColor = colors.grid;
     m.Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif';
     ChartClass = m.Chart;
     return ChartClass;
 }
 
 function config() {
+    const colors = chartTheme();
     const donut = props.chart === 'donut';
     const stacked = props.chart === 'stacked';
     const type = donut ? 'doughnut' : props.chart === 'line' ? 'line' : 'bar';
@@ -42,7 +44,7 @@ function config() {
                 label: d.label,
                 data: d.data,
                 backgroundColor: donut || d.colors ? props.labels.map((_, j) => colorFor(d.colors?.[j], j)) : colorFor(d.color, i),
-                borderColor: donut ? CHART_THEME.surface : d.colors ? props.labels.map((_, j) => colorFor(d.colors[j], j)) : colorFor(d.color, i),
+                borderColor: donut ? colors.surface : d.colors ? props.labels.map((_, j) => colorFor(d.colors[j], j)) : colorFor(d.color, i),
                 borderWidth: donut ? 2 : 2,
                 borderRadius: type === 'bar' ? 6 : 0,
                 pointRadius: type === 'line' ? 2 : 0,
@@ -56,13 +58,13 @@ function config() {
             animation: false,
             cutout: donut ? '62%' : undefined,
             plugins: {
-                legend: { display: donut || props.datasets.length > 1, position: donut ? 'right' : 'bottom', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, color: CHART_THEME.text, font: { size: 11 } } },
+                legend: { display: donut || props.datasets.length > 1, position: donut ? 'right' : 'bottom', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, color: colors.text, font: { size: 11 } } },
                 tooltip: {
-                    backgroundColor: CHART_THEME.tooltip,
-                    borderColor: CHART_THEME.border,
+                    backgroundColor: colors.tooltip,
+                    borderColor: colors.border,
                     borderWidth: 1,
-                    titleColor: CHART_THEME.title,
-                    bodyColor: CHART_THEME.text,
+                    titleColor: colors.title,
+                    bodyColor: colors.text,
                     padding: 10,
                     cornerRadius: 10,
                     callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed?.y ?? ctx.parsed)}` },
@@ -71,8 +73,8 @@ function config() {
             scales: donut
                 ? {}
                 : {
-                      x: { stacked, grid: { display: false }, border: { color: CHART_THEME.border }, ticks: { color: CHART_THEME.muted, font: { size: 11 }, maxRotation: 0, autoSkip: true } },
-                      y: { stacked, beginAtZero: true, grid: { color: CHART_THEME.grid }, border: { display: false }, ticks: { color: CHART_THEME.muted, font: { size: 11 }, precision: 0, callback: (v) => fmt(v) } },
+                      x: { stacked, grid: { display: false }, border: { color: colors.border }, ticks: { color: colors.muted, font: { size: 11 }, maxRotation: 0, autoSkip: true } },
+                      y: { stacked, beginAtZero: true, grid: { color: colors.grid }, border: { display: false }, ticks: { color: colors.muted, font: { size: 11 }, precision: 0, callback: (v) => fmt(v) } },
                   },
         },
     };
@@ -88,9 +90,16 @@ async function render() {
     }
 }
 
-onMounted(render);
+const onTheme = () => render();
+onMounted(() => {
+    render();
+    window.addEventListener('crm-theme', onTheme);
+});
 watch(() => [props.labels, props.datasets, props.chart], render, { deep: true });
-onBeforeUnmount(() => instance?.destroy());
+onBeforeUnmount(() => {
+    window.removeEventListener('crm-theme', onTheme);
+    instance?.destroy();
+});
 </script>
 
 <template>
