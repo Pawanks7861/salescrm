@@ -11,6 +11,7 @@ use App\Http\Presenters\LeadPresenter;
 use App\Http\Presenters\MeetingPresenter;
 use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Batch;
+use App\Models\Campaign;
 use App\Models\FacebookForm;
 use App\Models\FacebookPage;
 use App\Models\FacebookWebhookEvent;
@@ -175,6 +176,7 @@ class LeadController extends Controller
                 'createBatch' => $user->can('create', Batch::class),
                 'manageBatchTrainers' => $user->hasPermission(Permissions::BATCH_MANAGE_TRAINERS),
                 'bulkAssign' => $user->isAdmin() && $user->hasAnyPermission(Permissions::LEAD_ASSIGN, Permissions::LEAD_REASSIGN),
+                'bulkCampaign' => $user->isAdmin() && $user->hasPermission(Permissions::LEAD_EDIT_SOURCE),
             ],
         ]);
     }
@@ -380,6 +382,33 @@ class LeadController extends Controller
                 'manageBatchTrainers' => $manageBatches && $user->hasPermission(Permissions::BATCH_MANAGE_TRAINERS),
             ],
         ]);
+    }
+
+    public function bulkCampaign(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+
+        $data = $request->validate([
+            'lead_ids' => ['required', 'array', 'min:1', 'max:'.LeadService::MAX_BULK],
+            'lead_ids.*' => ['integer', 'distinct'],
+            'campaign_id' => ['required', 'integer'],
+        ]);
+
+        $changed = $this->leads->updateCampaigns(
+            $request->user(),
+            $data['lead_ids'],
+            (int) $data['campaign_id'],
+        );
+
+        if ($changed === 0) {
+            return back()->with('success', 'Campaign unchanged.');
+        }
+
+        $name = Campaign::query()->whereKey($data['campaign_id'])->value('name');
+
+        return back()->with('success', $changed === 1
+            ? "1 lead set to {$name}."
+            : "{$changed} leads set to {$name}.");
     }
 
     public function edit(Request $request, Lead $lead): Response

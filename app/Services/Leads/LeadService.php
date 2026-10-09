@@ -19,6 +19,7 @@ use App\Services\ActivityService;
 use App\Services\AuditService;
 use App\Services\SettingService;
 use App\Support\Permissions;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +30,8 @@ use Illuminate\Validation\ValidationException;
  */
 class LeadService
 {
+    public const MAX_BULK = 100;
+
     private const CONTACT_FIELDS = [
         'first_name', 'last_name', 'email', 'phone', 'alternate_phone', 'company_name',
         'designation', 'city', 'state', 'country', 'pincode', 'estimated_value',
@@ -246,6 +249,89 @@ class LeadService
         });
 
         return $lead;
+    }
+
+    /**
+     * Set one campaign on several leads. Super Admin and Admin only. Every id
+     * is checked before anything is written. Leads already on that campaign
+     * stay as they are. Each change writes a timeline activity and an audit entry.
+     *
+     * @param  array<int|string>  $leadIds
+     * @return int number of leads whose campaign actually changed
+     *
+     * @throws AuthorizationException|ValidationException
+     */
+    public function updateCampaigns(User $actor, array $leadIds, int $campaignId): int
+    {
+        if (! $actor->isAdmin() || ! $actor->hasPermission(Permissions::LEAD_EDIT_SOURCE)) {
+            throw new AuthorizationException('You are not allowed to change these campaigns.');
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $leadIds)));
+
+        if (count($ids) > self::MAX_BULK) {
+            throw ValidationException::withMessages(['lead_ids' => 'Select at most '.self::MAX_BULK.' leads at a time.']);
+        }
+
+        $campaign = Campaign::query()->active()->whereKey($campaignId)->first();
+
+        if (! $campaign) {
+            throw ValidationException::withMessages(['campaign_id' => 'The selected campaign is not available.']);
+        }
+
+        $leads = Lead::query()->visibleTo($actor)->whereIn('id', $ids)->get();
+
+        if ($leads->count() !== count($ids)) {
+            throw ValidationException::withMessages(['lead_ids' => 'One or more selected leads do not exist or are not available to you.']);
+        }
+
+        $fromNames = Campaign::query()
+            ->whereIn('id', $leads->pluck('campaign_id')->filter()->unique())
+            ->pluck('name', 'id');
+
+        $changed = 0;
+
+        foreach ($leads as $lead) {
+            $fromId = $lead->campaign_id !== null ? (int) $lead->campaign_id : null;
+
+            if ($fromId === $campaign->id) {
+                continue;
+            }
+
+            DB::transaction(function () use ($lead, $campaign, $actor, $fromId, $fromNames) {
+                $lead->forceFill([
+                    'campaign_id' => $campaign->id,
+                    'updated_by' => $actor->id,
+                ])->save();
+
+                $fromName = $fromId ? ($fromNames[$fromId] ?? null) : null;
+                $description = $fromName
+                    ? "Campaign changed from {$fromName} to {$campaign->name}"
+                    : "Campaign set to {$campaign->name}";
+
+                $this->activities->record(
+                    $lead,
+                    ActivityService::LEAD_UPDATED,
+                    $description,
+                    ['fields' => ['campaign_id'], 'from_campaign_id' => $fromId, 'to_campaign_id' => $campaign->id],
+                    $actor->id,
+                );
+
+                $this->audit->log(
+                    AuditAction::LeadUpdated,
+                    'leads',
+                    $lead,
+                    "Lead {$lead->lead_number} campaign updated",
+                    ['campaign_id' => $fromId],
+                    ['campaign_id' => $campaign->id],
+                    $actor->id,
+                );
+            });
+
+            $changed++;
+        }
+
+        return $changed;
     }
 
     public function changePriority(Lead $lead, LeadPriority $priority, User $actor): bool

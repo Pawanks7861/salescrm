@@ -41,6 +41,7 @@ Route::middleware($anyLeadView)->group(function () {
 
     Route::post('leads/{lead}/status', [LeadStatusController::class, 'update'])->middleware('permission:lead.change_status')->name('leads.status');
     Route::post('leads/bulk-assign', [LeadAssignmentController::class, 'bulk'])->middleware('permission:lead.assign|lead.reassign')->name('leads.bulk-assign');
+    Route::post('leads/bulk-campaign', [LeadController::class, 'bulkCampaign'])->middleware('permission:lead.edit_source')->name('leads.bulk-campaign');
     Route::post('leads/{lead}/assign', [LeadAssignmentController::class, 'update'])->middleware('permission:lead.assign|lead.reassign')->name('leads.assign');
 
     Route::post('leads/{lead}/notes', [LeadNoteController::class, 'store'])->name('leads.notes.store');

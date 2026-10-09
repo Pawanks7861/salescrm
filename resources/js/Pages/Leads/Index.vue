@@ -1,6 +1,7 @@
 <script setup>
 import AddToBatchModal from '@/Components/batches/AddToBatchModal.vue';
 import BulkAssignModal from '@/Components/leads/BulkAssignModal.vue';
+import BulkCampaignModal from '@/Components/leads/BulkCampaignModal.vue';
 import PriorityBadge from '@/Components/leads/PriorityBadge.vue';
 import AppIcon from '@/Components/ui/AppIcon.vue';
 import Avatar from '@/Components/ui/Avatar.vue';
@@ -121,7 +122,7 @@ const ageClass = (days) => (days <= 1 ? 'text-emerald-600' : days <= 3 ? 'text-s
 const pickDay = (day) => {
     filters.on = filters.on === day ? '' : day;
 };
-const canSelect = computed(() => props.can.addToBatch || props.can.bulkAssign);
+const canSelect = computed(() => props.can.addToBatch || props.can.bulkAssign || props.can.bulkCampaign);
 const colSpan = computed(() => columns.value.length + (canSelect.value ? 1 : 0));
 
 const selected = ref([]);
@@ -134,6 +135,7 @@ const allSelected = computed(() => selectableIds.value.length > 0 && selectableI
 const toggleAll = () => (selected.value = allSelected.value ? [] : [...selectableIds.value]);
 const addingToBatch = ref(false);
 const assigning = ref(false);
+const settingCampaign = ref(false);
 const groupedRows = computed(() => {
     const rows = props.leads.data;
     const leadRow = (lead) => ({ type: 'lead', lead, batches: batchTags(lead.batches) });
@@ -233,6 +235,7 @@ const clearDateSort = () => {
             <div v-if="canSelect && selected.length" class="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-brand-50/60 px-5 py-2.5 text-xs">
                 <span class="font-semibold text-slate-800">{{ selected.length }} selected</span>
                 <UiButton v-if="can.bulkAssign" size="sm" icon="switch" data-testid="bulk-assign" @click="assigning = true">Assign</UiButton>
+                <UiButton v-if="can.bulkCampaign" size="sm" icon="tag" data-testid="bulk-campaign-open" @click="settingCampaign = true">Campaign</UiButton>
                 <UiButton v-if="can.addToBatch" size="sm" icon="stack" @click="addingToBatch = true">Add to Batch</UiButton>
                 <button type="button" class="text-slate-500 hover:text-slate-800" @click="selected = []">Clear</button>
             </div>
@@ -333,8 +336,8 @@ const clearDateSort = () => {
                                 <UiBadge v-else-if="key === 'status' && row.lead.status" :color="row.lead.status.color" dot>{{ row.lead.status.name }}</UiBadge>
                                 <PriorityBadge v-else-if="key === 'priority'" :priority="row.lead.priority" />
                                 <template v-else-if="key === 'source'">
-                                    {{ row.lead.source?.name ?? '—' }}
-                                    <p v-if="row.lead.campaign" class="max-w-[140px] truncate text-2xs text-slate-500">{{ row.lead.campaign.name }}</p>
+                                    <span class="block max-w-[140px] truncate" :title="row.lead.campaign?.name ?? row.lead.source?.name">{{ row.lead.campaign?.name ?? row.lead.source?.name ?? '—' }}</span>
+                                    <p v-if="row.lead.campaign && row.lead.source" class="max-w-[140px] truncate text-2xs text-slate-500">{{ row.lead.source.name }}</p>
                                 </template>
                                 <template v-else-if="key === 'owner'">
                                     <div v-if="row.lead.assignee" class="flex items-center gap-2">
@@ -370,5 +373,6 @@ const clearDateSort = () => {
 
         <AddToBatchModal v-if="can.addToBatch" :show="addingToBatch" :lead-ids="selected" :can-create="can.createBatch" :can-assign-trainers="can.manageBatchTrainers" @close="addingToBatch = false" @added="selected = []" />
         <BulkAssignModal v-if="can.bulkAssign" :show="assigning" :lead-ids="selected" :users="options.assignees" @close="assigning = false" @assigned="selected = []" />
+        <BulkCampaignModal v-if="can.bulkCampaign" :show="settingCampaign" :lead-ids="selected" :campaigns="options.campaigns" @close="settingCampaign = false" @updated="selected = []" />
     </AppLayout>
 </template>
